@@ -1,0 +1,11 @@
+.stButton > button {
+    border: none !important;
+    width: 100%;
+}
+
+.custom-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 0.25rem;
+    color: #0c5460;
+}
