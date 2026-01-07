@@ -3,12 +3,10 @@ Carbon Intensity Data Fetcher
 Fetches real-time carbon intensity data for AWS regions using ElectricityMaps API
 """
 
-import requests
-import os
 import subprocess
 import json
 from typing import Tuple, Dict
-from aws_regions_fetcher import _cached_regions, AWSRegionsFetcher
+from src.aws_regions_fetcher import _cached_regions, AWSRegionsFetcher
 
 def _create_region_mapping() -> Dict[str, str]:
     """Create region to country zone mapping from cached regions"""
@@ -43,10 +41,11 @@ def get_live_carbon_intensity(region_code: str) -> Tuple[float, float]:
     if not zone:
         zone ='DE'
       
-    # Get API token from environment variable
+    # TODO: Get API token from environment variable
     # api_token = os.getenv('ELECTRICITYMAPS_API_TOKEN')
     # if not api_token:
     #     raise ValueError("ELECTRICITYMAPS_API_TOKEN environment variable not set")
+    
 
     api_token = 'Xs1VvrS47G4uuExNthP7'
     

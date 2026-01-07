@@ -2,6 +2,9 @@ import boto3
 import json
 import pandas as pd
 from typing import Dict, Any, Optional
+import matplotlib.pyplot as plt
+import io
+import base64
 
 class CCFTChatbot:
     def __init__(self, region_name: str = "us-east-1"):
@@ -118,11 +121,6 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
         """Get automated insights about the CCFT data with visualizations"""
         if self.ccft_data is None:
             return {"text": "No CCFT data loaded for analysis.", "charts": []}
-        
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        import io
-        import base64
         
         charts = []
         

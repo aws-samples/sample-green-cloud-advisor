@@ -2,10 +2,9 @@
 AWS Live Service Availability Checker
 Template for checking real-time AWS service availability
 """
-
-import requests
 import json
-from typing import Dict, List, Optional
+from typing import Dict
+import boto3
 
 def check_aws_service_availability_live(region_code: str, service_name: str) -> bool:
     """
@@ -20,7 +19,7 @@ def check_aws_service_availability_live(region_code: str, service_name: str) -> 
     """
     
     try:
-        import boto3
+
         from botocore.exceptions import ClientError, NoCredentialsError
         
         service_name = service_name.lower().strip()
@@ -59,10 +58,8 @@ def check_ec2_instance_availability(region_code: str, service_request: str) -> b
     Check if specific EC2 instance types are available in a region
     """
     try:
-        import boto3
-        
+      
         print(f"DEBUG: Checking EC2 availability for '{service_request}' in {region_code}")
-        
         ec2 = boto3.client('ec2', region_name=region_code)
         
         # Extract instance type from request
@@ -111,9 +108,7 @@ def check_basic_service_availability(region_code: str, service_name: str) -> boo
     """
     Check basic AWS service availability
     """
-    try:
-        import boto3
-        
+    try:        
         # Most basic services are available in all commercial regions
         if service_name in ['s3', 'lambda', 'ec2']:
             return True
@@ -155,8 +150,7 @@ def check_rds_engine_availability(region_code: str, service_request: str) -> boo
     Check RDS engine availability
     """
     try:
-        import boto3
-        
+       
         rds = boto3.client('rds', region_name=region_code)
         
         engine_map = {
@@ -195,17 +189,6 @@ def parse_aws_regional_data(json_data: str) -> Dict:
         data = json.loads(json_data)
         
         regional_services = {}
-        
-        # Expected JSON structure (you would need to provide this):
-        # {
-        #   "regions": [
-        #     {
-        #       "code": "us-east-1",
-        #       "name": "US East (N. Virginia)",
-        #       "services": ["EC2", "S3", "RDS", ...]
-        #     }
-        #   ]
-        # }
         
         for region in data.get('regions', []):
             region_code = region.get('code')

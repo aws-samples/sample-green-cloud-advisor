@@ -5,7 +5,7 @@ Fetches AWS regions and their coordinates dynamically
 """
 
 import boto3
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from dataclasses import dataclass
 
 @dataclass(frozen=True)

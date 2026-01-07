@@ -5,8 +5,7 @@ Extracts AWS services from workload descriptions
 
 import boto3
 import json
-from typing import List, Dict
-import re
+from typing import List
 
 class AWSServiceExtractor:
     def __init__(self):

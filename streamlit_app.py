@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime
-from greencloud_advisor import GreenCloudAdvisor
-from aws_service_checker import check_service_availability, get_unavailable_services
-from aws_live_checker import check_aws_service_availability_live
-from ccft_chatbot import CCFTChatbot
-from report_generator import CCFTReportGenerator
-from typing import Dict, List
+from src.greencloud_advisor import GreenCloudAdvisor
+from src.aws_service_extractor import AWSServiceExtractor
+from src.aws_live_checker import check_aws_service_availability_live
+from src.ccft_chatbot import CCFTChatbot
+from src.report_generator import CCFTReportGenerator
+from src.aws_regions_fetcher import AWSRegionsFetcher
+from src.sustainability_insights import SustainabilityInsights
 
 # load css
 def load_css(file_name):
@@ -15,7 +16,7 @@ def load_css(file_name):
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 # Then call it
-load_css('styles.css')
+load_css('css/styles.css')
 
 
 # Page config
@@ -84,7 +85,6 @@ if st.session_state.active_tab == "Region Analysis":
     
     with config_col2:
         # Get regions dynamically from aws_regions_fetcher
-        from aws_regions_fetcher import AWSRegionsFetcher
         fetcher = AWSRegionsFetcher()
         regions = fetcher.get_aws_regions()
         region_options = [f"{region.code} ({region.name})" for region in regions]
@@ -125,7 +125,6 @@ if st.session_state.active_tab == "Region Analysis":
         else:
             try:          
                 # Extract services from input using AI
-                from aws_service_extractor import AWSServiceExtractor
                 extractor = AWSServiceExtractor()
                 required_services = extractor.extract_services(services_input)
                 
@@ -299,7 +298,6 @@ if st.session_state.active_tab == "Region Analysis":
                 st.subheader("💡 Optimization Recommendations")
                 
                 with st.spinner("Generating AI-powered recommendations..."):
-                    from sustainability_insights import SustainabilityInsights
                     insights_generator = SustainabilityInsights()
                     insights = insights_generator.generate_insights(required_services, best)
                 
@@ -327,7 +325,6 @@ if st.session_state.active_tab == "Region Analysis":
                         from reportlab.graphics.charts.legends import Legend
                         import matplotlib.pyplot as plt
                         import io
-                        import base64
                         
                         buffer = io.BytesIO()
                         doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch)
@@ -341,7 +338,7 @@ if st.session_state.active_tab == "Region Analysis":
                         
                         # Title with avatar
                         try:
-                            avatar_img = Image("GreenCloudAdvisor_avatar.png", width=1*inch, height=1*inch)
+                            avatar_img = Image("image/GreenCloudAdvisor_avatar.png", width=1*inch, height=1*inch)
                             title_table = Table([[
                                 avatar_img,
                                 Paragraph("<font color='green'></font> GreenCloud Advisor\n<font size=14>Region Analysis Report</font>", title_style)
@@ -722,7 +719,7 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                 with btn_col2:
                     with st.form("ai_insights_form"):
                         insights_button = st.form_submit_button("🤖 Get AI Insights", type="primary")
-                        st.markdown('<style>div[data-testid="stForm"] button { width: 300px !important; }</style>', unsafe_allow_html=True)
+                        st.markdown('<style>div[data-testid="stForm"] button { width: 150px !important; }</style>', unsafe_allow_html=True)
                 
                 if insights_button:
                     with st.spinner("Analyzing your CCFT data..."):
