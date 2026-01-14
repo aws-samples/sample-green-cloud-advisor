@@ -1,7 +1,6 @@
 # 🌱 GreenCloud Advisor
 
 AWS Region Sustainability Recommender that balances proximity and environmental impact.
-It gives you recommendation 
 It has two modes: 
 - **New workload region and optimization recommender** : Specify in natural language the workload you are planning to launch and select the possible regions based on your latency requirements. 
    Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score.
@@ -29,14 +28,10 @@ You can test this running the streamlit app locally. If you like it, you can dep
 ## Solution overview
 This solution uses https://app.electricitymaps.com/ apis to get the carbon numbers of a specific region in the world to give a region score for the new workload. You need to create an **API KEY** to use the electricitymaps apis
 - create an API Token in https://app.electricitymaps.com/settings/api-access with an account. You can use sandbox key for free.
-- Once you do that save the same in ```API_TOKEN``` parameter in the config ```config``` in the root folder
+- Once you do that, save the same in ```API_TOKEN``` parameter in the config ```config``` in the root folder. It should look like this ```API_TOKEN='Xsxxxxxxxxxxxxxxx7```
 
 This solution operates in two modes **Region Analysis** and **CCFT Report Analysis**. For **Region Analysis**, https://app.electricitymaps.com/ is used to get the sustainability score for the region you choose.
-Both uses GenAI to create the recommendations and report.
-
-   ### Architecture Diagram
-
-   ![GreenCloud Advisor architecture diagram](image/Architecture_Diagram.png)
+Both modes use GenAI to create the recommendations and report.
 
 ## Run the app locally
 Open a terminal locally
@@ -47,6 +42,10 @@ with the above command http://localhost:8501 will be opened. If it is not opened
 
 ## Deploy the app on AWS
 This app can also be deployed on AWS. In the main folder, you would find a cloudformation template to deploy the app to ECS,ALB and CloudFront
+
+   ### Architecture Diagram
+
+   ![GreenCloud Advisor architecture diagram](image/Architecture_Diagram.png)
 
 Prerequisites:
 * docker
