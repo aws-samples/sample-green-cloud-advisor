@@ -40,15 +40,14 @@ def get_live_carbon_intensity(region_code: str) -> Tuple[float, float]:
     zone = region_mapping.get(region_code)
     if not zone:
         zone ='DE'
-      
-    # TODO: Get API token from environment variable
-    # api_token = os.getenv('ELECTRICITYMAPS_API_TOKEN')
-    # if not api_token:
-    #     raise ValueError("ELECTRICITYMAPS_API_TOKEN environment variable not set")
-    
 
-    api_token = 'Xs1VvrS47G4uuExNthP7'
-    
+    #Read the config file and use the API_TOKEN variable to create api_token variable
+    with open('config', 'r') as f:
+        for line in f:
+            if line.startswith('API_TOKEN='):
+                api_token = line.split('=')[1].strip().strip("'\"")
+                break
+   
     try:
 
         

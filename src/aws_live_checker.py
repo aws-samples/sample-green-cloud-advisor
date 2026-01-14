@@ -133,7 +133,7 @@ def check_basic_service_availability(region_code: str, service_name: str) -> boo
         if service_name == 'redshift':
             redshift = boto3.client('redshift', region_name=region_code)
             try:
-                redshift.describe_clusters(MaxRecords=1)
+                redshift.describe_clusters(MaxRecords=20)
                 return True
             except Exception as redshift_e:
                 print(f"Redshift Check Exception: {redshift_e}")

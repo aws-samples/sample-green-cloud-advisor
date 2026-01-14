@@ -1,0 +1,4 @@
+STACK_NAME='green-cloudadvisor-stack'
+CONTAINER_IMAGE='013477961212.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest'
+REGION='us-east-1'
+API_TOKEN='Xs1VvrS47G4uuExNthP7'

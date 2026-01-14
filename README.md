@@ -1,6 +1,23 @@
 # 🌱 GreenCloud Advisor
 
 AWS Region Sustainability Recommender that balances proximity and environmental impact.
+It gives you recommendation 
+It has two modes: 
+- **New workload region and optimization recommender** : Specify in natural language the workload you are planning to launch and select the possible regions based on your latency requirements. 
+   Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score.
+   It also tells you possible optimization you can do for the services you have chosen.
+   At then end, you can download the report in pdf format
+- **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html) report from the billing console
+   You can click on ```Get Insights``` button to get the insights like ```what are the top services that are contributing most on the carbon usage```, ```which regions have the most score``` and so on.
+   You can also chat with the report by chatbot on the right. Some of the sample questions you can ask are mentioned in the same tag
+
+You can test this running the streamlit app locally. If you like it, you can deploy this to your AWS account.
+
+## Contributors
+* [Shubham Tiwari](twars@amazon.com)
+* [Smita Srivastava](smisriv@amazon.com)
+* [Kayalvizhi Kandasamy](kayalvk@amazon.com)
+* [Gaurav Gupta](gauravgp@amazon.com)
 
 ## Features
 
@@ -9,54 +26,59 @@ AWS Region Sustainability Recommender that balances proximity and environmental 
 - **CCFT Integration**: Upload and analyze your AWS Customer Carbon Footprint Tool reports
 - **Interactive Web UI**: Streamlit-based interface for easy use
 
-## Quick Start
+## Solution overview
+This solution uses https://app.electricitymaps.com/ apis to get the carbon numbers of a specific region in the world to give a region score for the new workload. You need to create an **API KEY** to use the electricitymaps apis
+- create an API Token in https://app.electricitymaps.com/settings/api-access with an account. You can use sandbox key for free.
+- Once you do that save the same in ```API_TOKEN``` parameter in the config ```config``` in the root folder
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+This solution operates in two modes **Region Analysis** and **CCFT Report Analysis**. For **Region Analysis**, https://app.electricitymaps.com/ is used to get the sustainability score for the region you choose.
+Both uses GenAI to create the recommendations and report.
 
-2. **Run the Streamlit app:**
-   ```bash
-   streamlit run streamlit_app.py
-   ```
+   ### Architecture Diagram
 
-3. **Or use the CLI version:**
-   ```bash
-   python greencloud_advisor.py
-   ```
+   ![GreenCloud Advisor architecture diagram](image/Architecture_Diagram.png)
+
+## Run the app locally
+Open a terminal locally
+- set AWS credentials in the terminal
+- Install the dependencies ``` pip install requirements.txt ```
+- run the streamlit app ```streamlit run streamlit_app.py --server.port 8501```
+with the above command http://localhost:8501 will be opened. If it is not opened, open the same in a browser
+
+## Deploy the app on AWS
+This app can also be deployed on AWS. In the main folder, you would find a cloudformation template to deploy the app to ECS,ALB and CloudFront
+
+Prerequisites:
+* docker
+* python >= 3.8
+* use a browser for development
+
+To Deploy:
+1. Open a bash terminal and set aws-credentials for the account you want to deploy the solution to.
+1. Build a docker image and upload the same to ECR. By default it creates ECR repo in us-east-1 region. Feel free to change to different region. Replace <account-id> with the actual value where you are creating the ECR repository.
+   * Create ECR repository: ```aws ecr create-repository --repository-name greencloud --region us-east-1 ```
+   * Authenticate Docker to ECR: ```aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com ```
+   * Build the docker image: ```docker build -t greencloud .```
+   * Tag the docker image: ```docker tag greencloud:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest```
+   * Push the image to ECR: ```docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest```
+
+   Note the above ```container image``` as it is needed for the cloudformation stack below at step 3.
+
+1. Open the ```config``` file and edit the ECR container image path for ```CONTAINER_IMAGE```. It should look something like ```123456789.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest```
+
+1. Run deploy.sh to deploy the cloudformation in your account
+```./deploy.sh```
 
 ## Usage
 
-### Web Interface
+### Web Interface for new workload
 1. Enter your AWS services or workload description
-2. Select potential AWS regions to evaluate
-3. Set your location (latitude/longitude)
-4. Optionally upload your CCFT report
-5. Click "Analyze Regions" for recommendations
+1. Select potential AWS regions to evaluate
+1. Click "Analyze Regions" for recommendations
+1. Get a summary about which region is better for sustainability and optimization recommendations. (Download available)
 
-### Inputs
-- **AWS Services**: EC2, S3, RDS, Lambda, etc.
-- **Regions**: Select from available AWS regions
-- **Location**: Your geographic coordinates
-- **CCFT Report**: CSV or JSON format (optional)
+### Web Interface fpr existing workloads using ccft report
+1. Upload your CCFT report which you can download from your Billing console. More can be found here: [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html)
+1. Get Insights from your CCFT report (Download available)
+1. Chat with your CCFT report using Amazon Nova pro
 
-### Outputs
-- **Recommended Region**: Best sustainability score
-- **Comparison Table**: All evaluated regions
-- **Carbon Intensity Chart**: Visual comparison
-- **Key Insights**: Analysis summary and benefits
-
-## How It Works
-
-1. **Proximity Analysis**: Finds regions within your distance preference
-2. **Service Filtering**: Ensures regions support your required services
-3. **Sustainability Scoring**: Combines location-based (30%) and market-based (70%) carbon intensities
-4. **Ranking**: Recommends the most sustainable option
-
-## Example
-
-For a London-based company needing EC2, S3, and RDS:
-- **Input**: London coordinates (51.5074, -0.1278)
-- **Output**: Stockholm (eu-north-1) recommended with 0.003 sustainability score
-- **Benefit**: 99.7% emission reduction vs location-based accounting
