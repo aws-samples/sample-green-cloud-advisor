@@ -202,6 +202,9 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: GreenCloud-ALB-SG
@@ -216,6 +219,9 @@ Resources:
           FromPort: !Ref pContainerPort
           ToPort: !Ref pContainerPort
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: GreenCloud-ECS-SG

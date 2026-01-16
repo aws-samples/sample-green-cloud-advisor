@@ -1,4 +1,4 @@
 STACK_NAME='green-cloudadvisor-stack'
-CONTAINER_IMAGE='0123456789.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest'
+CONTAINER_IMAGE='<account-id>.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest'
 REGION='us-east-1'
-API_TOKEN='Xsxxxxxxxxxxxxxxxx'
+API_TOKEN='<YOUR_ELECTRICITY_MAPS_API_TOKEN>'

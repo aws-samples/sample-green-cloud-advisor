@@ -116,7 +116,7 @@ def check_basic_service_availability(region_code: str, service_name: str) -> boo
         # Check RDS availability
         if service_name == 'rds':
             rds = boto3.client('rds', region_name=region_code)
-            response = rds.describe_db_engine_versions(MaxRecords=1)
+            response = rds.describe_db_engine_versions(MaxRecords=20)
             return len(response['DBEngineVersions']) > 0
         
         # Check EKS availability

@@ -3,8 +3,8 @@ Carbon Intensity Data Fetcher
 Fetches real-time carbon intensity data for AWS regions using ElectricityMaps API
 """
 
-import subprocess
 import json
+import requests
 from typing import Tuple, Dict
 from src.aws_regions_fetcher import _cached_regions, AWSRegionsFetcher
 
@@ -48,30 +48,25 @@ def get_live_carbon_intensity(region_code: str) -> Tuple[float, float]:
                 api_token = line.split('=')[1].strip().strip("'\"")
                 break
    
-    try:
-
+    try:        
+        headers = {
+            'auth-token': api_token,
+            'Content-Type': 'application/json'
+        }
+        url = f'https://api.electricitymaps.com/v3/carbon-intensity/latest?zone={zone}'
         
-        curl_command = [
-            'curl', '-X', 'GET',
-            f'https://api.electricitymaps.com/v3/carbon-intensity/latest?zone={zone}',
-            '-H', f'auth-token: {api_token}',
-            '-H', 'Content-Type: application/json'
-        ]
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
         
-        result = subprocess.run(curl_command, capture_output=True, text=True, timeout=10)
+        data = response.json()
+        print("API response:", data)
+        carbon_intensity = data.get("carbonIntensity", 400) / 1000  # Convert g/kWh to kg/kWh
         
-        if result.returncode == 0:
-            data = json.loads(result.stdout)
-            print("Curl response:", data)
-            carbon_intensity = data.get("carbonIntensity", 400) / 1000  # Convert g/kWh to kg/kWh
-            
-            # Return both location-based and market-based (assuming 30% reduction for market-based)
-            location_based = carbon_intensity
-            market_based = carbon_intensity * 0.7
-            
-            return location_based, market_based
-        else:
-            raise Exception(f"Curl failed: {result.stderr}")
+        # Return both location-based and market-based (assuming 30% reduction for market-based)
+        location_based = carbon_intensity
+        market_based = carbon_intensity * 0.7
+        
+        return location_based, market_based
             
     except Exception as e:
         raise Exception(f"Failed to fetch carbon intensity for {region_code}: {str(e)}")
