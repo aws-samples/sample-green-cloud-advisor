@@ -338,11 +338,9 @@ if st.session_state.active_tab == "Region Analysis":
                         
                         # Title with avatar
                         try:
-                            avatar_img = Image("image/GreenCloudAdvisor_avatar.png", width=1*inch, height=1*inch)
                             title_table = Table([[
-                                avatar_img,
                                 Paragraph("<font color='green'></font> GreenCloud Advisor\n<font size=14>Region Analysis Report</font>", title_style)
-                            ]], colWidths=[1.2*inch, 5*inch])
+                            ]])
                             title_table.setStyle(TableStyle([
                                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
