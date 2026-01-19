@@ -301,15 +301,27 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - ec2:DescribeInstanceTypeOfferings
+                  - rds:DescribeDbEngineVersions
                   - ec2:DescribeRegions
                   - ec2:DescribeAvailabilityZones
+                  - redshift:DescribeClusters
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - bedrock:InvokeModel
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:bedrock:*::foundation-model/*'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/*'
+              - Effect: Allow
+                Action:
                   - s3:PutObject
                   - s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::*'
+              - Effect: Allow
+                Action:
                   - eks:ListClusters
-                  - redshift:DescribeClusters
-                  - rds:DescribeDbEngineVersions
-                Resource: '*'
+                Resource: !Sub 'arn:${AWS::Partition}:eks:*:${AWS::AccountId}:cluster/*'
       Tags:
         - Key: Name
           Value: GreenCloud-ECSTaskRole

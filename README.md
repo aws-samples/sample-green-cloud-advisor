@@ -8,7 +8,7 @@ It has two modes:
    At then end, you can download the report in pdf format
 - **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html) report from the billing console
    You can click on ```Get Insights``` button to get the insights like ```what are the top services that are contributing most on the carbon usage```, ```which regions have the most score``` and so on.
-   You can also chat with the report by chatbot on the right. Some of the sample questions you can ask are mentioned in the same tag
+   You can also chat with the report by chatbot on the right. Some of the sample questions you can ask are mentioned in the same tab.
 
 You can test this running the streamlit app locally. If you like it, you can deploy this to your AWS account.
 
