@@ -36,7 +36,7 @@ Both modes use GenAI to create the recommendations and report.
 ## Run the app locally
 Open a terminal locally
 - set AWS credentials in the terminal
-- Install the dependencies ``` pip install requirements.txt ```
+- Install the dependencies ``` pip install -r requirements.txt ```
 - run the streamlit app ```streamlit run streamlit_app.py --server.port 8501```
 with the above command http://localhost:8501 will be opened. If it is not opened, open the same in a browser
 
