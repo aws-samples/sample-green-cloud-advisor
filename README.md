@@ -1,6 +1,6 @@
 # 🌱 GreenCloud Advisor
 
-AWS Region Sustainability Recommender that balances proximity and environmental impact.
+GreenCloud Advisor is an AWS Region Sustainability Recommender that balances proximity and environmental impact.
 It has two modes: 
 - **New workload region and optimization recommender** : Specify in natural language the workload you are planning to launch and select the possible regions based on your latency requirements. 
    Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score.
