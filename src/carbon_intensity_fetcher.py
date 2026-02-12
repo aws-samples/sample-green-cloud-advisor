@@ -33,7 +33,7 @@ def _create_region_mapping() -> Dict[str, str]:
     
     return region_mapping
 
-def get_live_carbon_intensity(region_code: str) -> Tuple[float, float]:
+def get_live_carbon_intensity(region_code: str) -> float:
     """Get live carbon intensity data for AWS region using ElectricityMaps API"""
     region_mapping = _create_region_mapping()
     
@@ -62,11 +62,7 @@ def get_live_carbon_intensity(region_code: str) -> Tuple[float, float]:
         print("API response:", data)
         carbon_intensity = data.get("carbonIntensity", 400) / 1000  # Convert g/kWh to kg/kWh
         
-        # Return both location-based and market-based (assuming 30% reduction for market-based)
-        location_based = carbon_intensity
-        market_based = carbon_intensity * 0.7
-        
-        return location_based, market_based
+        return carbon_intensity
             
     except Exception as e:
         raise Exception(f"Failed to fetch carbon intensity for {region_code}: {str(e)}")

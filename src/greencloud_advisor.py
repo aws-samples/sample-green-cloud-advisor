@@ -3,7 +3,7 @@
 GreenCloud Advisor - AWS Region Sustainability Recommender
 Balances proximity and sustainability for optimal AWS region selection
 """
-from typing import Tuple
+
 from src.aws_regions_fetcher import AWSRegionsFetcher
 from src.aws_live_checker import check_aws_service_availability_live
 from src.carbon_intensity_fetcher import get_live_carbon_intensity
@@ -21,12 +21,10 @@ class GreenCloudAdvisor:
             return False
 
     
-    def calculate_sustainability_score(self, region_code: str, 
-                                     weight_market: float = 0.7) -> Tuple[float, float, float]:
-        """Calculate sustainability score using live data (lower is better)"""
-        location_based, market_based = get_live_carbon_intensity(region_code)
-        score = (market_based * weight_market + location_based * (1 - weight_market))
-        return location_based, market_based, score
+    def calculate_location_based_score(self, region_code: str) -> float:
+        """Calculate location-based carbon intensity score (lower is better)"""
+        location_based = get_live_carbon_intensity(region_code)
+        return location_based
     
 
 def main():

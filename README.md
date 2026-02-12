@@ -1,9 +1,9 @@
 # 🌱 GreenCloud Advisor
 
-AWS Region Sustainability Recommender that balances proximity and environmental impact.
+GreenCloud Advisor is an AWS Region Sustainability Recommender that balances proximity and environmental impact.
 It has two modes: 
 - **New workload region and optimization recommender** : Specify in natural language the workload you are planning to launch and select the possible regions based on your latency requirements. 
-   Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score.
+   Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score/lowest carbon intensity.
    It also tells you possible optimization you can do for the services you have chosen.
    At then end, you can download the report in pdf format
 - **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html) report from the billing console
@@ -36,9 +36,9 @@ Both modes use GenAI to create the recommendations and report.
 ## Run the app locally
 Open a terminal locally
 - set AWS credentials in the terminal
-- Install the dependencies ``` pip install requirements.txt ```
+- Install the dependencies ``` pip install -r requirements.txt ```
 - run the streamlit app ```streamlit run streamlit_app.py --server.port 8501```
-with the above command http://localhost:8501 will be opened. If it is not opened, open the same in a browser
+  <br> With the above command http://localhost:8501 will be opened. If it is not opened, open the same in a browser
 
 ## Deploy the app on AWS
 This app can also be deployed on AWS. In the main folder, you would find a cloudformation template to deploy the app to ECS,ALB and CloudFront
@@ -83,6 +83,7 @@ To Deploy:
 
 ## Important Notes
 - The connection between CloudFront and the ALB is in HTTP, not SSL encrypted. This means traffic between CloudFront and the ALB is unencrypted. It is **strongly recommended** to configure HTTPS by bringing your own domain name and SSL/TLS certificate to the ALB.
+- Users should provide their electricitymaps.com API key in the config file to enable rapid deployment. Once deployed to production, **migrate the API key to AWS Secrets Manager** and update your application to retrieve credentials from it, ensuring compliance with security best practices and preventing credential exposure.
 - The provided code is intended as a demo and starting point, not production ready. The Python app relies on third party libraries like Streamlit and streamlit-cognito-auth. As the developer, it is your responsibility to properly vet, maintain, and test all third party dependencies. The authentication and authorization mechanisms in particular should be thoroughly evaluated. More generally, you should perform security reviews and testing before incorporating this demo code in a production application or with sensitive data.
 - AWS provides various services, not implemented in this demo, that can improve the security of this application. Network security services like network ACLs and AWS WAF can control access to resources. You could also use AWS Shield for DDoS protection and Amazon GuardDuty for threats detection. Amazon Inspector performs security assessments. There are many more AWS services and best practices that can enhance security - refer to the AWS Shared Responsibility Model and security best practices guidance for additional recommendations. The developer is responsible for properly implementing and configuring these services to meet their specific security requirements.
 

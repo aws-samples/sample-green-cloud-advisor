@@ -149,7 +149,7 @@ if st.session_state.active_tab == "Region Analysis":
                         for region in advisor.regions:
                             if region.code == region_code:
                                 st.markdown(f'<div class="custom-info">📊 Getting carbon intensity for {region_code}</div>', unsafe_allow_html=True)
-                                location_based, market_based, sustainability_score = advisor.calculate_sustainability_score(region.code)
+                                location_based = advisor.calculate_location_based_score(region.code)
                             
                                 st.markdown(f'<div class="custom-info">✅ Checking service availability for {region_code}</div>', unsafe_allow_html=True)
                                 # Check service availability using live API
@@ -167,8 +167,6 @@ if st.session_state.active_tab == "Region Analysis":
                                     "region_code": region.code,
                                     "region_name": region.name,
                                     "location_based_intensity": location_based,
-                                    "market_based_intensity": market_based,
-                                    "sustainability_score": round(sustainability_score, 3),
                                     "supports_services": supports_all_services,
                                     "unavailable_services": unavailable_services
                                 })
@@ -196,8 +194,8 @@ if st.session_state.active_tab == "Region Analysis":
             all_regions_data = st.session_state.analysis_results
             required_services = st.session_state.analysis_params["required_services"]
             
-            # Sort by sustainability score
-            all_regions_data.sort(key=lambda x: x["sustainability_score"])
+            # Sort by location_based_intensity (lower is better)
+            all_regions_data.sort(key=lambda x: x["location_based_intensity"])
             
             # Filter for service compatibility
             filtered_options = [region for region in all_regions_data if region["supports_services"]]
@@ -216,7 +214,7 @@ if st.session_state.active_tab == "Region Analysis":
                 # Display recommendation
                 best = filtered_options[0]
                 
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
                 
                 with col1:
                     st.metric(
@@ -227,19 +225,9 @@ if st.session_state.active_tab == "Region Analysis":
                 
                 with col2:
                     st.metric(
-                        "🌱 Market-based Intensity",
-                        f"{round(best['market_based_intensity'], 2)} kg CO2e/kWh",
-                        help=f"Market-based intensity: {round(best['market_based_intensity'], 2)} kg CO2e/kWh\n\nThis value represents the carbon intensity of electricity that AWS actually purchases, accounting for:\n• Renewable Energy Certificates (RECs)\n• Power Purchase Agreements (PPAs)\n• Direct renewable energy investments\n\nCalculated using WattTime API data and AWS sustainability commitments. Lower values indicate cleaner energy procurement."
-                    )
-                
-                with col3:
-                    # Find the region with lowest score for comparison
-                    lowest_region = min(filtered_options, key=lambda x: x['sustainability_score'])
-                    
-                    st.metric(
-                        "📊 Sustainability Score",
-                        f"{best['sustainability_score']}",
-                        help=f"Calculated as: (Market-based × 0.7) + (Location-based × 0.3)\n\nFormula: ({best['market_based_intensity']} × 0.7) + ({best['location_based_intensity']} × 0.3) = {best['sustainability_score']}\n\nLowest score region: {lowest_region['region_name']} ({lowest_region['sustainability_score']})"
+                        "🌱 Carbon Intensity",
+                        f"{round(best['location_based_intensity'], 3)} kg CO2e/kWh",
+                        help=f"Location-based carbon intensity: {round(best['location_based_intensity'], 3)} kg CO2e/kWh\n\nThis value represents the average carbon intensity of the electricity grid in the region, reflecting:\n• The actual energy mix of the local grid\n• Regional power generation sources (coal, gas, renewables, nuclear)\n• Real-time grid carbon intensity\n\nCalculated using electricity maps API data. Lower values indicate a cleaner regional grid."
                     )
                 
                 # Comparison table and chart in single row with colored containers
@@ -250,11 +238,9 @@ if st.session_state.active_tab == "Region Analysis":
                         st.subheader("📊 Region Comparison")
                         df = pd.DataFrame(filtered_options)
                         df = df[['region_name', 'region_code', 
-                                'location_based_intensity', 'market_based_intensity', 
-                                'sustainability_score']]
+                                'location_based_intensity']]
                         df.columns = ['Region', 'Code',
-                                     'Location-based (kg CO2e/kWh)', 'Market-based (kg CO2e/kWh)', 
-                                     'Sustainability Score']
+                                     'Carbon Intensity (kg CO2e/kWh)']
                         st.dataframe(df, width='stretch')
                 
                 with col2:
@@ -262,8 +248,7 @@ if st.session_state.active_tab == "Region Analysis":
                         st.markdown("<h4 style='font-size: 18px;'>📈 Carbon Intensity Comparison</h4>", unsafe_allow_html=True)
                         chart_data = pd.DataFrame({
                             'Region': [opt['region_name'] for opt in filtered_options],
-                            'Location-based': [opt['location_based_intensity'] for opt in filtered_options],
-                            'Market-based': [opt['market_based_intensity'] for opt in filtered_options]
+                            'Location-based': [opt['location_based_intensity'] for opt in filtered_options]
                         })
                         st.bar_chart(chart_data.set_index('Region'), height=300)
                 
@@ -291,7 +276,7 @@ if st.session_state.active_tab == "Region Analysis":
                     **Sustainability Benefits:**
                     - {emission_reduction}% emission reduction between highest and lowest regions
                     - Best region: {best['region_name']}
-                    - Lowest carbon intensity: {best['market_based_intensity']} kg CO2e/kWh
+                    - Lowest carbon intensity: {best['location_based_intensity']} kg CO2e/kWh
                     """)
                 
                 # Sustainability Insights Widget
@@ -338,11 +323,9 @@ if st.session_state.active_tab == "Region Analysis":
                         
                         # Title with avatar
                         try:
-                            avatar_img = Image("image/GreenCloudAdvisor_avatar.png", width=1*inch, height=1*inch)
                             title_table = Table([[
-                                avatar_img,
                                 Paragraph("<font color='green'></font> GreenCloud Advisor\n<font size=14>Region Analysis Report</font>", title_style)
-                            ]], colWidths=[1.2*inch, 5*inch])
+                            ]])
                             title_table.setStyle(TableStyle([
                                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -371,11 +354,8 @@ if st.session_state.active_tab == "Region Analysis":
                             Paragraph("<font color='gold'>★</font> <b>Recommended Region</b>", metric_style),
                             Paragraph(f"<b>{best['region_name']} ({best['region_code']})</b>", styles['Normal'])
                         ], [
-                            Paragraph("<font color='green'>♦</font> <b>Sustainability Score</b>", metric_style),
-                            Paragraph(f"<b>{best['sustainability_score']}</b>", styles['Normal'])
-                        ], [
                             Paragraph("<font color='blue'>▼</font> <b>Carbon Intensity</b>", metric_style),
-                            Paragraph(f"<b>{round(best['market_based_intensity'], 3)} kg CO2e/kWh</b>", styles['Normal'])
+                            Paragraph(f"<b>{round(best['location_based_intensity'], 3)} kg CO2e/kWh</b>", styles['Normal'])
                         ]]
                         
                         summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
@@ -400,13 +380,10 @@ if st.session_state.active_tab == "Region Analysis":
                             chart_regions = filtered_options[:min(6, len(filtered_options))]
                             regions = [opt['region_name'] for opt in chart_regions]
                             location_based = [opt['location_based_intensity'] for opt in chart_regions]
-                            market_based = [opt['market_based_intensity'] for opt in chart_regions]
                             
                             x = range(len(regions))
-                            width = 0.35
                             
-                            ax.bar([i - width/2 for i in x], location_based, width, label='Location-based', color="#583ecc", alpha=0.8)
-                            ax.bar([i + width/2 for i in x], market_based, width, label='Market-based', color="#76769a", alpha=0.8)
+                            ax.bar(x, location_based, label='Location-based', color="#583ecc", alpha=0.8)
                             
                             ax.set_xlabel('AWS Regions', fontsize=12)
                             ax.set_ylabel('Carbon Intensity (kg CO2e/kWh)', fontsize=12)
@@ -482,9 +459,7 @@ if st.session_state.active_tab == "Region Analysis":
                         table_data = [[
                             Paragraph('<b><font color="blue">●</font> Region</b>', styles['Normal']),
                             Paragraph('<b><font color="red">■</font> Code</b>', styles['Normal']),
-                            Paragraph('<b><font color="orange">▲</font> Location-based</b>', styles['Normal']),
-                            Paragraph('<b><font color="green">▼</font> Market-based</b>', styles['Normal']),
-                            Paragraph('<b><font color="gold">★</font> Score</b>', styles['Normal'])
+                            Paragraph('<b><font color="orange">▲</font> Carbon Intensity</b>', styles['Normal'])
                         ]]
                         
                         for i, region in enumerate(filtered_options):
@@ -492,12 +467,10 @@ if st.session_state.active_tab == "Region Analysis":
                             table_data.append([
                                 region['region_name'],
                                 region['region_code'],
-                                f"{round(region['location_based_intensity'], 3)}",
-                                f"{round(region['market_based_intensity'], 3)}",
-                                f"{region['sustainability_score']}"
+                                f"{round(region['location_based_intensity'], 3)}"
                             ])
                         
-                        table = Table(table_data, colWidths=[1.5*inch, 0.8*inch, 1.2*inch, 1.2*inch, 0.8*inch])
+                        table = Table(table_data, colWidths=[2*inch, 1*inch, 2*inch])
                         table.setStyle(TableStyle([
                             ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
                             ('TEXTCOLOR', (0, 0), (-1, 0), colors.darkblue),
@@ -522,13 +495,13 @@ if st.session_state.active_tab == "Region Analysis":
                         
                         insights_data = [[
                             Paragraph("<font color='blue'>▼</font> Emission Reduction:", styles['Normal']),
-                            Paragraph(f"{emission_reduction}% with market-based accounting", styles['Normal'])
+                            Paragraph(f"{emission_reduction}% between highest and lowest regions", styles['Normal'])
                         ], [
                             Paragraph("<font color='gold'>★</font> Best Region:", styles['Normal']),
                             Paragraph(f"{best['region_name']}", styles['Normal'])
                         ], [
                             Paragraph("<font color='green'>♦</font> Lowest Carbon Intensity:", styles['Normal']),
-                            Paragraph(f"{best['market_based_intensity']} kg CO2e/kWh", styles['Normal'])
+                            Paragraph(f"{round(best['location_based_intensity'], 3)} kg CO2e/kWh", styles['Normal'])
                         ]]
                         
                         insights_table = Table(insights_data, colWidths=[2.5*inch, 3*inch])
