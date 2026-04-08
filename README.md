@@ -6,7 +6,7 @@ It has two modes:
    Once you do that, it first checks wether all the services are available in the selected regions and if they do, then it tells you which region as the lowest sustainability score/lowest carbon intensity.
    It also tells you possible optimization you can do for the services you have chosen.
    At then end, you can download the report in pdf format
-- **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html) report from the billing console
+- **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Carbon Emission Report](https://docs.aws.amazon.com/sustainability/latest/userguide/csv-reports.html) report from the [sustainability console](https://docs.aws.amazon.com/sustainability/latest/userguide/getting-started.html)
    You can click on ```Get Insights``` button to get the insights like ```what are the top services that are contributing most on the carbon usage```, ```which regions have the most score``` and so on.
    You can also chat with the report by chatbot on the right. Some of the sample questions you can ask are mentioned in the same tab.
 
@@ -33,7 +33,7 @@ This solution uses https://app.electricitymaps.com/ apis to get the carbon numbe
 - create an API Token in https://app.electricitymaps.com/settings/api-access with an account. You can use sandbox key for free.
 - Once you do that, save the same in ```API_TOKEN``` parameter in the config ```config``` in the root folder. It should look like this ```API_TOKEN='Xsxxxxxxxxxxxxxxx7```
 
-This solution operates in two modes **Region Analysis** and **CCFT Report Analysis**. For **Region Analysis**, https://app.electricitymaps.com/ is used to get the sustainability score for the region you choose.
+This solution operates in two modes **Region Analysis** and **Sustainability Report Analysis**. For **Region Analysis**, https://app.electricitymaps.com/ is used to get the sustainability score for the region you choose.
 Both modes use GenAI to create the recommendations and report.
 
 ## Run the app locally
@@ -88,10 +88,10 @@ To Deploy:
 1. Click "Analyze Regions" for recommendations
 1. Get a summary about which region is better for sustainability and optimization recommendations. (Download available)
 
-### Web Interface fpr existing workloads using ccft report
-1. Upload your CCFT report which you can download from your Billing console. More can be found here: [Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/what-is-ccft.html)
-1. Get Insights from your CCFT report (Download available)
-1. Chat with your CCFT report using Amazon Nova pro
+### Web Interface for existing workloads
+1. Upload your carbon emission report which you can download from your Sustainability console. More can be found here: [Carbon emission report for your account](https://docs.aws.amazon.com/sustainability/latest/userguide/csv-reports.html)
+1. Get Insights from your emission report (Download available)
+1. Chat with your emission report using Amazon Nova pro
 
 ## Important Notes
 - The connection between CloudFront and the ALB is in HTTP, not SSL encrypted. This means traffic between CloudFront and the ALB is unencrypted. It is **strongly recommended** to configure HTTPS by bringing your own domain name and SSL/TLS certificate to the ALB.
