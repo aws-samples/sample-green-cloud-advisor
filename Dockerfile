@@ -1,5 +1,5 @@
 # Multi-stage build for smaller image
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -19,11 +19,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Production stage
 FROM python:3.11-slim
 
-# Install runtime dependencies only
+# Install runtime dependencies and Japanese TrueType font for PDF/chart rendering
 RUN apt-get update && apt-get install -y \
     curl \
+    fonts-noto-cjk \
+    fontconfig \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && mkdir -p /usr/share/fonts/truetype/notosansjp \
+    && curl -L -o /usr/share/fonts/truetype/notosansjp/NotoSansJP-Regular.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf" \
+    && fc-cache -f
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv

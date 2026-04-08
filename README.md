@@ -13,17 +13,20 @@ It has two modes:
 You can test this running the streamlit app locally. If you like it, you can deploy this to your AWS account.
 
 ## Contributors
-* [Shubham Tiwari](twars@amazon.com)
 * [Smita Srivastava](smisriv@amazon.com)
+* [Tomoya Tozuka](totozuka@amazon.com)
 * [Kayalvizhi Kandasamy](kayalvk@amazon.com)
 * [Gaurav Gupta](gauravgp@amazon.com)
+* [Shubham Tiwari](twars@amazon.com)
+
 
 ## Features
 
 - **Smart Region Selection**: Analyzes proximity, service availability, and carbon footprint
 - **Dual Carbon Accounting**: Uses both location-based and market-based methods
-- **CCFT Integration**: Upload and analyze your AWS Customer Carbon Footprint Tool reports
+- **Carbon emission report integration**: Upload and analyze your carbon emmission csv report which cane be downloaded from sustainability console
 - **Interactive Web UI**: Streamlit-based interface for easy use
+- **Multilingual Support (EN/JA)**: UI and PDF reports support English and Japanese with one-click switching
 
 ## Solution overview
 This solution uses https://app.electricitymaps.com/ apis to get the carbon numbers of a specific region in the world to give a region score for the new workload. You need to create an **API KEY** to use the electricitymaps apis
@@ -36,9 +39,18 @@ Both modes use GenAI to create the recommendations and report.
 ## Run the app locally
 Open a terminal locally
 - set AWS credentials in the terminal
-- Install the dependencies ``` pip install -r requirements.txt ```
+- Run the setup script (installs dependencies and Japanese fonts):
+  ```bash
+  ./setup.sh
+  ```
+  Or install manually:
+  ```bash
+  pip install -r requirements.txt
+  ```
+  **Note (Linux only):** Japanese font is required for PDF/chart rendering. `setup.sh` installs it automatically. For manual install: `sudo apt-get install fonts-noto-cjk`
 - run the streamlit app ```streamlit run streamlit_app.py --server.port 8501```
   <br> With the above command http://localhost:8501 will be opened. If it is not opened, open the same in a browser
+- To switch between English and Japanese, click the 🇺🇸 EN / 🇯🇵 JA button at the top right of the page
 
 ## Deploy the app on AWS
 This app can also be deployed on AWS. In the main folder, you would find a cloudformation template to deploy the app to ECS,ALB and CloudFront
@@ -57,7 +69,7 @@ To Deploy:
 1. Build a docker image and upload the same to ECR. By default it creates ECR repo in us-east-1 region. Feel free to change to different region. Replace <account-id> with the actual value where you are creating the ECR repository.
    * Create ECR repository: ```aws ecr create-repository --repository-name greencloud --region us-east-1 ```
    * Authenticate Docker to ECR: ```aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com ```
-   * Build the docker image: ```docker build -t greencloud .```
+   * Build the docker image: ```docker build --platform linux/amd64 -t greencloud .```
    * Tag the docker image: ```docker tag greencloud:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest```
    * Push the image to ECR: ```docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest```
 

@@ -26,6 +26,11 @@ Parameters:
     Type: String
     Default: 000000000.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest
   
+  pCloudFrontPrefixListId:
+    Type: String
+    Default: pl-3b927c52
+    Description: AWS managed prefix list ID for CloudFront (varies by region, e.g. pl-3b927c52 for us-east-1)
+
   pContainerPort:
     Type: Number
     Default: 8501
@@ -191,17 +196,17 @@ Resources:
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for ALB
+      GroupDescription: Security group for ALB - CloudFront access only
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          SourcePrefixListId: !Ref pCloudFrontPrefixListId
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0
+          SourcePrefixListId: !Ref pCloudFrontPrefixListId
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -252,10 +257,10 @@ Resources:
       TargetType: ip
       HealthCheckPath: /_stcore/health
       HealthCheckProtocol: HTTP
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 60
+      HealthCheckTimeoutSeconds: 10
       HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
+      UnhealthyThresholdCount: 5
       Tags:
         - Key: Name
           Value: GreenCloud-TG

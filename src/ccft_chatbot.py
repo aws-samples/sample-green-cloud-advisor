@@ -1,8 +1,10 @@
 import boto3
 import json
+import os
 import pandas as pd
 from typing import Dict, Any, Optional
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import io
 import base64
 
@@ -42,12 +44,10 @@ CCFT Data Summary:
                 regions = self.ccft_data['location'].value_counts()
                 summary += f"\nTop Regions: {', '.join(regions.index[:5])}"
             
-            # Add service breakdown using 'product_code' column
             if 'product_code' in self.ccft_data.columns:
                 services = self.ccft_data['product_code'].value_counts()
                 summary += f"\nTop Services: {', '.join(services.index[:5])}"
             
-            # Add emissions info using actual CCFT columns
             if 'total_mbm_emissions_value' in self.ccft_data.columns:
                 mbm_total = self.ccft_data['total_mbm_emissions_value'].sum()
                 summary += f"\nTotal MBM emissions: {mbm_total:.2f} MTCO2e"
@@ -66,10 +66,8 @@ CCFT Data Summary:
     def chat(self, user_message: str) -> str:
         """Chat with Claude about CCFT data"""
         try:
-            # Include actual CCFT data context if available
             data_context = ""
             if self.ccft_data is not None and isinstance(self.ccft_data, pd.DataFrame):
-                # Include sample data for better context
                 data_context = f"\n\nActual CCFT Data Sample:\n{self.ccft_data.head(5).to_string()}\n\nData Summary:\n{self.data_summary}"
             
             system_prompt = f"""You are an AWS sustainability expert analyzing Customer Carbon Footprint Tool (CCFT) data. 
@@ -84,7 +82,6 @@ Your role:
 
 Keep responses concise and actionable. Focus on sustainability insights and recommendations.{data_context}"""
 
-            # Include the entire CCFT dataset as context
             full_message = user_message
             if self.ccft_data is not None and isinstance(self.ccft_data, pd.DataFrame):
                 # Include the complete dataset for Nova to analyze
@@ -117,10 +114,36 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
         except Exception as e:
             return f"Error: {str(e)}. Please check your AWS credentials and Bedrock access."
     
-    def get_data_insights(self) -> Dict[str, Any]:
+    def get_data_insights(self, lang: str = "en") -> Dict[str, Any]:
         """Get automated insights about the CCFT data with visualizations"""
         if self.ccft_data is None:
             return {"text": "No CCFT data loaded for analysis.", "charts": []}
+        
+        # i18n: Load chart texts and setup font
+        _locale_path = os.path.join(os.path.dirname(__file__), '..', 'locales', f'{lang}.json')
+        with open(_locale_path, 'r', encoding='utf-8') as f:
+            _all_texts = json.load(f)
+        # Map chart keys (prefixed with chart_) to short keys for convenience
+        t = {k[6:]: v for k, v in _all_texts.items() if k.startswith('chart_')}
+
+        font_prop = None
+        if lang == "ja":
+            for fp in ['/Library/Fonts/Arial Unicode.ttf', '/System/Library/Fonts/Arial Unicode.ttf',
+                       '/usr/share/fonts/truetype/notosansjp/NotoSansJP-Regular.ttf',
+                       '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+                       '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc']:
+                if os.path.exists(fp):
+                    try:
+                        fm.fontManager.addfont(fp)
+                        prop = fm.FontProperties(fname=fp)
+                        plt.rcParams['font.family'] = 'sans-serif'
+                        plt.rcParams['font.sans-serif'] = [prop.get_name()] + plt.rcParams.get('font.sans-serif', [])
+                        plt.rcParams['axes.unicode_minus'] = False
+                        font_prop = prop
+                        break
+                    except Exception:
+                        continue
+        fp_kw = {"fontproperties": font_prop} if font_prop else {}
         
         charts = []
         
@@ -128,7 +151,7 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
             plt.style.use('default')
             print(f"Available columns: {list(self.ccft_data.columns)}")
             
-            # Chart 1: Service emissions using total_mbm_emissions_value
+            # Chart 1: Service emissions
             if 'product_code' in self.ccft_data.columns and 'total_mbm_emissions_value' in self.ccft_data.columns:
                 fig, ax = plt.subplots(figsize=(10, 6))
                 service_data = self.ccft_data.groupby('product_code')['total_mbm_emissions_value'].sum().sort_values(ascending=False)
@@ -138,9 +161,9 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
                 
                 if len(service_data) > 0:
                     service_data.plot(kind='bar', ax=ax, color='skyblue')
-                    ax.set_title('AWS Services by Carbon Emissions (MBM)', fontsize=14, fontweight='bold')
-                    ax.set_xlabel('AWS Services')
-                    ax.set_ylabel('CO2 Emissions (MTCO2e)')
+                    ax.set_title(t["svc_title"], fontsize=14, fontweight='bold', **fp_kw)
+                    ax.set_xlabel(t["svc_xlabel"], **fp_kw)
+                    ax.set_ylabel(t["svc_ylabel"], **fp_kw)
                     plt.xticks(rotation=45, ha='right')
                     plt.tight_layout()
                     
@@ -197,19 +220,19 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
                 plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
                 img_buffer.seek(0)
                 img_str = base64.b64encode(img_buffer.getvalue()).decode()
-                charts.append({"title": "LBM vs MBM Comparison", "image": img_str, "description": "This comparison shows the difference between Location-Based Method and Market-Based Method total emissions calculations."})
+                charts.append({"title": t["compare_chart_title"], "image": img_str, "description": t["compare_desc"]})
                 plt.close()
             
-            # Chart 4: Monthly emissions trend for sustainability tracking
+            # Chart 4: Monthly emissions trend
             if 'usage_month' in self.ccft_data.columns and 'total_mbm_emissions_value' in self.ccft_data.columns:
                 fig, ax = plt.subplots(figsize=(12, 6))
                 monthly_data = self.ccft_data.groupby('usage_month')['total_mbm_emissions_value'].sum().sort_index()
                 
                 ax.plot(monthly_data.index, monthly_data.values, marker='o', linewidth=2, markersize=6, color='#1f77b4')
                 ax.fill_between(monthly_data.index, monthly_data.values, alpha=0.3, color='#1f77b4')
-                ax.set_title('Monthly Carbon Emissions Trend', fontsize=14, fontweight='bold')
-                ax.set_xlabel('Month')
-                ax.set_ylabel('CO2 Emissions (MTCO2e)')
+                ax.set_title(t["trend_title"], fontsize=14, fontweight='bold', **fp_kw)
+                ax.set_xlabel(t["trend_xlabel"], **fp_kw)
+                ax.set_ylabel(t["trend_ylabel"], **fp_kw)
                 ax.grid(True, alpha=0.3)
                 plt.xticks(rotation=45)
                 plt.tight_layout()
@@ -218,10 +241,10 @@ Keep responses concise and actionable. Focus on sustainability insights and reco
                 plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
                 img_buffer.seek(0)
                 img_str = base64.b64encode(img_buffer.getvalue()).decode()
-                charts.append({"title": "Monthly Emissions Trend", "image": img_str, "description": "This trend line shows monthly carbon emissions over time, helping identify patterns and track sustainability improvements."})
+                charts.append({"title": t["trend_chart_title"], "image": img_str, "description": t["trend_desc"]})
                 plt.close()
         
-        # Ask Claude to generate a professional summary with actual data analysis
+        # Ask Claude to generate a professional summary
         if isinstance(self.ccft_data, pd.DataFrame):
             region_analysis = self.ccft_data.groupby('location')['total_mbm_emissions_value'].sum().sort_values(ascending=False)
             service_analysis = self.ccft_data.groupby('product_code')['total_mbm_emissions_value'].sum().sort_values(ascending=False)
@@ -245,7 +268,7 @@ Include:
 5. Key Findings from the actual data
 6. Give real-world comparison like two way air trips between Bagalore to Deli in India, two way car trips between Bagalore to Deli in India and electricity consumption per house in Bangalore with respective flight, car and house icons as bullet points. 
 
-Use professional business language with specific numbers from the data."""
+Use professional business language with specific numbers from the data. {t['summary_lang_instruction']}"""
         else:
             summary_prompt = "Generate a professional executive summary noting that CCFT data format is not recognized for detailed analysis."
         

@@ -10,6 +10,9 @@ from src.report_generator import CCFTReportGenerator
 from src.aws_regions_fetcher import AWSRegionsFetcher
 from src.sustainability_insights import SustainabilityInsights
 
+# Page config - MUST be first Streamlit command
+st.set_page_config(page_title="GreenCloud Advisor", page_icon="🌱", layout="wide")
+
 # load css
 def load_css(file_name):
     with open(file_name) as f:
@@ -18,12 +21,55 @@ def load_css(file_name):
 # Then call it
 load_css('css/styles.css')
 
+# Load locale texts from external JSON files
+import json as _json
+import os as _os
 
-# Page config
-st.set_page_config(page_title="GreenCloud Advisor", page_icon="🌱", layout="wide")
+def _load_locales():
+    locales_dir = _os.path.join(_os.path.dirname(__file__), 'locales')
+    texts = {}
+    for lang_code in ['en', 'ja']:
+        filepath = _os.path.join(locales_dir, f'{lang_code}.json')
+        with open(filepath, 'r', encoding='utf-8') as f:
+            texts[lang_code] = _json.load(f)
+    return texts
 
-st.title("🌱 GreenCloud Advisor")
-st.subheader("AWS Region Sustainability Recommender")
+TEXTS = _load_locales()
+
+# Initialize language session state
+if "lang" not in st.session_state:
+    st.session_state.lang = "en"
+
+# CSS for language switcher button
+st.markdown("""
+<style>
+.lang-switcher {
+    position: fixed;
+    top: 14px;
+    right: 60px;
+    z-index: 9999;
+    background: white;
+    border-radius: 20px;
+    padding: 2px 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Language switcher button (right side of title)
+title_col, lang_col = st.columns([8, 1])
+with title_col:
+    st.title("🌱 GreenCloud Advisor")
+with lang_col:
+    st.write("")
+    current = st.session_state.lang
+    label = "🇺🇸 EN" if current == "ja" else "🇯🇵 JA"
+    if st.button(label, key="lang_btn"):
+        st.session_state.lang = "en" if current == "ja" else "ja"
+        st.rerun()
+
+T = TEXTS[st.session_state.lang]
+st.subheader(T["subtitle"])
 
 # Initialize advisor and chatbot
 @st.cache_resource
@@ -50,14 +96,14 @@ if "active_tab" not in st.session_state:
 # Custom tab buttons
 col1, col2, col3 = st.columns([1, 1, 4])
 with col1:
-    if st.button("🌍 Region Analysis", 
+    if st.button(T["tab_region"], 
                  type="primary" if st.session_state.active_tab == "Region Analysis" else "secondary",
                  key="tab1_btn"):
         st.session_state.active_tab = "Region Analysis"
         st.rerun()
         
 with col2:
-    if st.button("📊 CCFT Report Analysis", 
+    if st.button(T["tab_ccft"], 
                  type="primary" if st.session_state.active_tab == "CCFT Report Analysis" else "secondary",
                  key="tab2_btn"):
         st.session_state.active_tab = "CCFT Report Analysis"
@@ -66,7 +112,7 @@ with col2:
 st.divider()
 
 if st.session_state.active_tab == "Region Analysis":
-    st.header("🌍 Region Analysis Configuration")
+    st.header(T["header_region"])
     
     # Configuration in columns
     config_col1, config_col2 = st.columns([1, 1])
@@ -74,10 +120,10 @@ if st.session_state.active_tab == "Region Analysis":
     with config_col1:
         # AWS Services input
         services_input = st.text_area(
-            "AWS Services or Workload Description",
-            placeholder="e.g., We need a web application with GPU instances for ML training, object storage for data, and a MySQL database",
-            help="Describe your workload or list AWS services. AI will extract the services automatically.",
-            value="I have an app with below details on AWS Creating a Web App —> Need EKS cluster with 5000 c6i.8xlarge RDS instance with Master and two replicas with size of each RDS node as r7i.8xlarge. It will also have 5 nodes if Redis Elaticache on top of RDS with size cache.m4.10xlarge. We will also be usng some p4 GPU isntances as well."
+            T["label_services"],
+            placeholder=T["placeholder_services"],
+            help=T["help_services"],
+            value=T["sample_workload"]
         )
         
         # Services will be extracted when analyze button is clicked
@@ -96,7 +142,7 @@ if st.session_state.active_tab == "Region Analysis":
                 default_regions.append(region_option)
         
         selected_regions = st.multiselect(
-            "Potential AWS Regions",
+            T["label_regions"],
             region_options,
             default=default_regions if default_regions else region_options[:3]
         )
@@ -104,7 +150,7 @@ if st.session_state.active_tab == "Region Analysis":
     # Main content for Region Analysis
     col1, col2, col3 = st.columns([2, 1, 1])
     with col3:       
-        analyze_button = st.button("🔍 Analyze Regions", type="primary")
+        analyze_button = st.button(T["btn_analyze"], type="primary")
     
     # Initialize session state for analysis results
     if "analysis_results" not in st.session_state:
@@ -119,40 +165,36 @@ if st.session_state.active_tab == "Region Analysis":
         st.session_state.show_results = False
         
         if not services_input:
-            st.warning("Please specify AWS services or workload description")
+            st.warning(T["warn_no_services"])
         elif not selected_regions:
-            st.warning("Please select at least one potential region")
+            st.warning(T["warn_no_regions"])
         else:
             try:          
-                # Extract services from input using AI
                 extractor = AWSServiceExtractor()
                 required_services = extractor.extract_services(services_input)
                 
                 if required_services:
-                    st.info(f"🤖 AI extracted services: {', '.join(required_services)}")
+                    st.info(T["info_extracted"] + ', '.join(required_services))
                 else:
-                    st.warning("No AWS services could be extracted from the description. Please be more specific.")
+                    st.warning(T["warn_no_extract"])
                     st.stop()
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown('<div class="custom-info">🔄 Starting analysis...</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="custom-info">{T["status_starting"]}</div>', unsafe_allow_html=True)
                 
-                    # Filter results to only selected regions
                     region_codes = [region.split(" ")[0] for region in selected_regions]
-                    st.markdown(f'<div class="custom-info">🔍 Analyzing regions: {region_codes}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="custom-info">{T["status_analyzing"]}{region_codes}</div>', unsafe_allow_html=True)
                 
-                    # Get all regions data for selected regions
                     all_regions_data = []
                     for region_code in region_codes:
-                        st.markdown(f'<div class="custom-info">⚙️ Processing region: {region_code}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="custom-info">{T["status_processing"]}{region_code}</div>', unsafe_allow_html=True)
                         for region in advisor.regions:
                             if region.code == region_code:
-                                st.markdown(f'<div class="custom-info">📊 Getting carbon intensity for {region_code}</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div class="custom-info">{T["status_carbon"]}{region_code}</div>', unsafe_allow_html=True)
                                 location_based = advisor.calculate_location_based_score(region.code)
                             
-                                st.markdown(f'<div class="custom-info">✅ Checking service availability for {region_code}</div>', unsafe_allow_html=True)
-                                # Check service availability using live API
+                                st.markdown(f'<div class="custom-info">{T["status_checking"]}{region_code}</div>', unsafe_allow_html=True)
                                 unavailable_services = []
                                 for service in required_services:
                                     try:
@@ -172,7 +214,7 @@ if st.session_state.active_tab == "Region Analysis":
                                 })
                                 break
                 
-                    st.success(f"Analysis complete! Found {len(all_regions_data)} regions.")
+                    st.success(T["status_complete"] + str(len(all_regions_data)) + T["status_complete2"])
                 
                     # Store results in session state
                     st.session_state.analysis_results = all_regions_data
@@ -186,7 +228,7 @@ if st.session_state.active_tab == "Region Analysis":
                 st.stop()
     
     # Results container box - placed after debug statements
-    results_container = st.container(border=False)
+    results_container = st.container()
     
     # Display results from session state inside container
     with results_container:
@@ -200,14 +242,13 @@ if st.session_state.active_tab == "Region Analysis":
             # Filter for service compatibility
             filtered_options = [region for region in all_regions_data if region["supports_services"]]
             
-            # Always show service availability status for all selected regions
-            st.subheader("🔍 Service Availability Check")
+            st.subheader(T["result_availability"])
             
             for region in all_regions_data:
                 if region["unavailable_services"]:
-                    st.error(f"❌ **{region['region_name']} ({region['region_code']})**: Missing {', '.join(region['unavailable_services'])}")
+                    st.error(f"❌ **{region['region_name']} ({region['region_code']})**: {T['result_missing']}{', '.join(region['unavailable_services'])}")
                 else:
-                    st.success(f"✅ **{region['region_name']} ({region['region_code']})**: All services available")
+                    st.success(f"✅ **{region['region_name']} ({region['region_code']})**: {T['result_all_ok']}")
             
             # Show sustainability analysis for supported regions
             if filtered_options:
@@ -218,16 +259,16 @@ if st.session_state.active_tab == "Region Analysis":
                 
                 with col1:
                     st.metric(
-                        "🏆 Recommended Region",
+                        T["result_recommended"],
                         f"{best['region_name']}",
                         f"{best['region_code']}"
                     )
                 
                 with col2:
                     st.metric(
-                        "🌱 Carbon Intensity",
+                        T["result_carbon"],
                         f"{round(best['location_based_intensity'], 3)} kg CO2e/kWh",
-                        help=f"Location-based carbon intensity: {round(best['location_based_intensity'], 3)} kg CO2e/kWh\n\nThis value represents the average carbon intensity of the electricity grid in the region, reflecting:\n• The actual energy mix of the local grid\n• Regional power generation sources (coal, gas, renewables, nuclear)\n• Real-time grid carbon intensity\n\nCalculated using electricity maps API data. Lower values indicate a cleaner regional grid."
+                        help=T["result_carbon_help"]
                     )
                 
                 # Comparison table and chart in single row with colored containers
@@ -235,33 +276,30 @@ if st.session_state.active_tab == "Region Analysis":
                 
                 with col1:
                     with st.container(border=True):
-                        st.subheader("📊 Region Comparison")
+                        st.subheader(T["result_comparison"])
                         df = pd.DataFrame(filtered_options)
-                        df = df[['region_name', 'region_code', 
-                                'location_based_intensity']]
-                        df.columns = ['Region', 'Code',
-                                     'Carbon Intensity (kg CO2e/kWh)']
+                        df = df[['region_name', 'region_code', 'location_based_intensity']]
+                        df.columns = [T["result_col_region"], T["result_col_code"], T["result_col_carbon"]]
                         st.dataframe(df, width='stretch')
                 
                 with col2:
                     with st.container(border=True):
-                        st.markdown("<h4 style='font-size: 18px;'>📈 Carbon Intensity Comparison</h4>", unsafe_allow_html=True)
+                        st.markdown(f"<h4 style='font-size: 18px;'>{T['result_chart_title']}</h4>", unsafe_allow_html=True)
                         chart_data = pd.DataFrame({
-                            'Region': [opt['region_name'] for opt in filtered_options],
-                            'Location-based': [opt['location_based_intensity'] for opt in filtered_options]
+                            T["result_col_region"]: [opt['region_name'] for opt in filtered_options],
+                            T["result_chart_col"]: [opt['location_based_intensity'] for opt in filtered_options]
                         })
-                        st.bar_chart(chart_data.set_index('Region'), height=300)
+                        st.bar_chart(chart_data.set_index(T["result_col_region"]), height=300)
                 
-                # Analysis summary
-                st.subheader("🎯 Key Insights")
+                st.subheader(T["result_insights"])
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     st.info(f"""
-                    **Analysis Summary:**
-                    - Evaluated {len(st.session_state.analysis_params["selected_regions"])} selected regions
-                    - {len(filtered_options)} regions support your services
+                    {T["result_summary_title"]}
+                    - {T["result_summary_evaluated"]}{len(st.session_state.analysis_params["selected_regions"])}{T["result_summary_regions"]}
+                    - {len(filtered_options)}{T["result_summary_support"]}
                     """)
                 
                 with col2:
@@ -273,18 +311,17 @@ if st.session_state.active_tab == "Region Analysis":
                     )
                     
                     st.success(f"""
-                    **Sustainability Benefits:**
-                    - {emission_reduction}% emission reduction between highest and lowest regions
-                    - Best region: {best['region_name']}
-                    - Lowest carbon intensity: {best['location_based_intensity']} kg CO2e/kWh
+                    {T["result_benefits_title"]}
+                    - {emission_reduction}{T["result_benefits_reduction"]}
+                    - {T["result_benefits_best"]}{best['region_name']}
+                    - {T["result_benefits_carbon"]}{best['location_based_intensity']} kg CO2e/kWh
                     """)
                 
-                # Sustainability Insights Widget
-                st.subheader("💡 Optimization Recommendations")
+                st.subheader(T["result_opt_title"])
                 
-                with st.spinner("Generating AI-powered recommendations..."):
+                with st.spinner(T["result_opt_spinner"]):
                     insights_generator = SustainabilityInsights()
-                    insights = insights_generator.generate_insights(required_services, best)
+                    insights = insights_generator.generate_insights(required_services, best, lang=st.session_state.lang)
                 
                 for insight in insights:
                     with st.expander(f"{insight['title']}"):
@@ -295,6 +332,13 @@ if st.session_state.active_tab == "Region Analysis":
                 col1, col2, col3 = st.columns([2, 1, 1])
                 with col3:
                     def create_analysis_pdf():
+                        # Remove emoji characters not supported by PDF fonts
+                        import re
+                        def _strip_emoji(text):
+                            return re.sub(
+                                r'[\U0001F300-\U0001F9FF\U00002702-\U000027B0\U0000FE00-\U0000FE0F\U0000200D\U00002600-\U000026FF]',
+                                '', text).strip()
+
                         # Safety checks
                         if not filtered_options:
                             st.error("No data available for PDF generation")
@@ -308,23 +352,97 @@ if st.session_state.active_tab == "Region Analysis":
                         from reportlab.graphics.shapes import Drawing, Rect
                         from reportlab.graphics.charts.barcharts import VerticalBarChart
                         from reportlab.graphics.charts.legends import Legend
+                        from reportlab.pdfbase import pdfmetrics
+                        from reportlab.pdfbase.ttfonts import TTFont
                         import matplotlib.pyplot as plt
+                        import matplotlib
                         import io
+                        import os
+
+                        # Japanese font setup
+                        is_ja = st.session_state.lang == "ja"
+                        font_name = 'Helvetica'
+                        bold_font_name = 'Helvetica-Bold'
+
+                        if is_ja:
+                            # Try available fonts for macOS/Linux/Docker
+                            jp_font_candidates = [
+                                ('/Library/Fonts/Arial Unicode.ttf', None, 'Arial Unicode MS'),
+                                ('/System/Library/Fonts/Arial Unicode.ttf', None, 'Arial Unicode MS'),
+                                ('/usr/share/fonts/truetype/notosansjp/NotoSansJP-Regular.ttf', None, 'Noto Sans JP'),
+                                ('/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', 0, 'Noto Sans CJK JP'),
+                                ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0, 'Noto Sans CJK JP'),
+                            ]
+                            for fp, subfont_idx, mpl_font_name in jp_font_candidates:
+                                if os.path.exists(fp):
+                                    try:
+                                        if subfont_idx is not None:
+                                            pdfmetrics.registerFont(TTFont('JpFont', fp, subfontIndex=subfont_idx))
+                                        else:
+                                            pdfmetrics.registerFont(TTFont('JpFont', fp))
+                                        font_name = 'JpFont'
+                                        bold_font_name = 'JpFont'
+                                        matplotlib.rcParams['font.family'] = mpl_font_name
+                                    except Exception:
+                                        continue
+                                    break
                         
                         buffer = io.BytesIO()
                         doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch)
                         styles = getSampleStyleSheet()
                         story = []
                         
-                        # Custom styles
-                        title_style = ParagraphStyle('CustomTitle', parent=styles['Title'], fontSize=24, spaceAfter=20, textColor=colors.darkgreen)
-                        header_style = ParagraphStyle('CustomHeader', parent=styles['Heading1'], fontSize=16, textColor=colors.darkblue, spaceBefore=15)
-                        metric_style = ParagraphStyle('MetricStyle', parent=styles['Normal'], fontSize=12, textColor=colors.darkgreen, leftIndent=20)
+                        # Custom styles with font applied
+                        title_style = ParagraphStyle('CustomTitle', parent=styles['Title'], fontSize=24, spaceAfter=20, textColor=colors.darkgreen, fontName=font_name)
+                        header_style = ParagraphStyle('CustomHeader', parent=styles['Heading1'], fontSize=16, textColor=colors.darkblue, spaceBefore=15, fontName=font_name)
+                        metric_style = ParagraphStyle('MetricStyle', parent=styles['Normal'], fontSize=12, textColor=colors.darkgreen, leftIndent=20, fontName=font_name)
+                        normal_style = ParagraphStyle('NormalJp', parent=styles['Normal'], fontName=font_name)
+                        footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=10, textColor=colors.grey, alignment=1, fontName=font_name)
+
+                        # Load PDF text definitions from locales
+                        import json as _json
+                        _locale_path = os.path.join(os.path.dirname(__file__), 'locales', f'{st.session_state.lang}.json')
+                        with open(_locale_path, 'r', encoding='utf-8') as f:
+                            _all = _json.load(f)
+                        _pt = {k: v for k, v in _all.items() if k.startswith('pdf_')}
+
+                        pdf_title       = _pt["pdf_title"]
+                        pdf_generated   = _pt["pdf_generated_prefix"] + datetime.now().strftime(_pt["pdf_generated_fmt"])
+                        pdf_workload    = _pt["pdf_workload"]
+                        pdf_regions     = _pt["pdf_regions"]
+                        pdf_rec_region  = _pt["pdf_rec_region"]
+                        pdf_carbon      = _pt["pdf_carbon"]
+                        pdf_chart_title = _pt["pdf_chart_title"]
+                        pdf_chart_label_x = _pt["pdf_chart_label_x"]
+                        pdf_chart_label_y = _pt["pdf_chart_label_y"]
+                        pdf_chart_legend  = _pt["pdf_chart_legend"]
+                        pdf_chart_comp    = _pt["pdf_chart_comp"]
+                        pdf_services    = _pt["pdf_services"]
+                        pdf_svc_name    = _pt["pdf_svc_name"]
+                        pdf_svc_cat     = _pt["pdf_svc_cat"]
+                        pdf_region_tbl  = _pt["pdf_region_tbl"]
+                        pdf_col_region  = _pt["pdf_col_region"]
+                        pdf_col_code    = _pt["pdf_col_code"]
+                        pdf_col_carbon  = _pt["pdf_col_carbon"]
+                        pdf_insights    = _pt["pdf_insights"]
+                        pdf_emission    = _pt["pdf_emission"]
+                        pdf_emission_v  = _pt["pdf_emission_v_fmt"].format(reduction=emission_reduction)
+                        pdf_best        = _pt["pdf_best"]
+                        pdf_lowest      = _pt["pdf_lowest"]
+                        pdf_opt         = _pt["pdf_opt"]
+                        pdf_rec_col1    = _pt["pdf_rec_col1"]
+                        pdf_rec_col2    = _pt["pdf_rec_col2"]
+                        pdf_rec_col3    = _pt["pdf_rec_col3"]
+                        pdf_savings_title1 = _pt["pdf_savings_title1"]
+                        pdf_savings_title2 = _pt["pdf_savings_title2"]
+                        pdf_savings_body1 = _pt["pdf_savings_body1"]
+                        pdf_savings_body2 = _pt["pdf_savings_body2"]
+                        pdf_footer      = _pt["pdf_footer"]
                         
-                        # Title with avatar
+                        # Title
                         try:
                             title_table = Table([[
-                                Paragraph("<font color='green'></font> GreenCloud Advisor\n<font size=14>Region Analysis Report</font>", title_style)
+                                Paragraph(f"GreenCloud Advisor  {pdf_title}", title_style)
                             ]])
                             title_table.setStyle(TableStyle([
                                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -333,29 +451,26 @@ if st.session_state.active_tab == "Region Analysis":
                             ]))
                             story.append(title_table)
                         except:
-                            story.append(Paragraph("<font color='green'></font> GreenCloud Advisor - Region Analysis Report", title_style))
+                            story.append(Paragraph(f"GreenCloud Advisor - {pdf_title}", title_style))
                         
-                        story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}", styles['Normal']))
+                        story.append(Paragraph(pdf_generated, normal_style))
                         story.append(Spacer(1, 30))
 
-                        # Add the workload description
-                        story.append(Paragraph("<font color='blue'>📋</font> Workload Description", header_style))
-                        story.append(Paragraph(services_input, styles['Normal']))
+                        story.append(Paragraph(f"[Workload] {pdf_workload}", header_style))
+                        story.append(Paragraph(services_input, normal_style))
                         story.append(Spacer(1, 20))
 
-                        # Add the selected AWS regions
-                        story.append(Paragraph("<font color='blue'>🌍</font> Potential AWS Regions", header_style))
+                        story.append(Paragraph(f"[Regions] {pdf_regions}", header_style))
                         regions_text = ", ".join(selected_regions)
-                        story.append(Paragraph(regions_text, styles['Normal']))
+                        story.append(Paragraph(regions_text, normal_style))
                         story.append(Spacer(1, 20))
                         
-                        # Executive Summary Box
                         summary_data = [[
-                            Paragraph("<font color='gold'>★</font> <b>Recommended Region</b>", metric_style),
-                            Paragraph(f"<b>{best['region_name']} ({best['region_code']})</b>", styles['Normal'])
+                            Paragraph(f"<b>★ {pdf_rec_region}</b>", metric_style),
+                            Paragraph(f"<b>{best['region_name']} ({best['region_code']})</b>", normal_style)
                         ], [
-                            Paragraph("<font color='blue'>▼</font> <b>Carbon Intensity</b>", metric_style),
-                            Paragraph(f"<b>{round(best['location_based_intensity'], 3)} kg CO2e/kWh</b>", styles['Normal'])
+                            Paragraph(f"<b>▼ {pdf_carbon}</b>", metric_style),
+                            Paragraph(f"<b>{round(best['location_based_intensity'], 3)} kg CO2e/kWh</b>", normal_style)
                         ]]
                         
                         summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
@@ -371,28 +486,23 @@ if st.session_state.active_tab == "Region Analysis":
                         story.append(summary_table)
                         story.append(Spacer(1, 25))
                         
-                        # Create Carbon Intensity Chart
+                        # Chart generation
                         def create_chart():
                             if not filtered_options:
                                 return None
-                            
                             fig, ax = plt.subplots(figsize=(8, 5))
                             chart_regions = filtered_options[:min(6, len(filtered_options))]
                             regions = [opt['region_name'] for opt in chart_regions]
                             location_based = [opt['location_based_intensity'] for opt in chart_regions]
-                            
                             x = range(len(regions))
-                            
-                            ax.bar(x, location_based, label='Location-based', color="#583ecc", alpha=0.8)
-                            
-                            ax.set_xlabel('AWS Regions', fontsize=12)
-                            ax.set_ylabel('Carbon Intensity (kg CO2e/kWh)', fontsize=12)
-                            ax.set_title('Carbon Intensity Comparison', fontsize=14, fontweight='bold')
+                            ax.bar(x, location_based, label=pdf_chart_legend, color="#583ecc", alpha=0.8)
+                            ax.set_xlabel(pdf_chart_label_x, fontsize=12)
+                            ax.set_ylabel(pdf_chart_label_y, fontsize=12)
+                            ax.set_title(pdf_chart_comp, fontsize=14, fontweight='bold')
                             ax.set_xticks(x)
                             ax.set_xticklabels(regions, rotation=45, ha='right')
                             ax.legend()
                             ax.grid(True, alpha=0.3)
-                            
                             plt.tight_layout()
                             chart_buffer = io.BytesIO()
                             plt.savefig(chart_buffer, format='png', dpi=150, bbox_inches='tight')
@@ -400,25 +510,21 @@ if st.session_state.active_tab == "Region Analysis":
                             plt.close()
                             return chart_buffer
                         
-                        # Add chart to PDF
-                        story.append(Paragraph("<font color='blue'>▲</font> Carbon Intensity Analysis", header_style))
+                        story.append(Paragraph(f"▲ {pdf_chart_title}", header_style))
                         chart_buffer = create_chart()
                         if chart_buffer:
                             chart_img = Image(chart_buffer, width=6*inch, height=3.75*inch)
                             story.append(chart_img)
                         else:
-                            story.append(Paragraph("No data available for chart generation", styles['Normal']))
+                            story.append(Paragraph("No data available for chart generation", normal_style))
                         story.append(Spacer(1, 20))
                         
-                        # Services Analysis with table structure
-                        story.append(Paragraph("<font color='orange'>⚙</font> Required Services", header_style))
+                        story.append(Paragraph(f"⚙ {pdf_services}", header_style))
                         
                         if required_services:
-                            # Create services table
-                            services_data = [[Paragraph('<b><font color="orange">⚙</font> Service Name</b>', styles['Normal']),
-                                            Paragraph('<b><font color="blue">●</font> Category</b>', styles['Normal'])]]
+                            services_data = [[Paragraph(f'<b>⚙ {pdf_svc_name}</b>', normal_style),
+                                            Paragraph(f'<b>● {pdf_svc_cat}</b>', normal_style)]]
                             
-                            # Map services to categories
                             service_categories = {
                                 'EC2': 'Compute', 'ECS': 'Compute', 'EKS': 'Compute', 'Lambda': 'Compute',
                                 'S3': 'Storage', 'EBS': 'Storage', 'EFS': 'Storage',
@@ -430,15 +536,15 @@ if st.session_state.active_tab == "Region Analysis":
                             for service in required_services:
                                 category = service_categories.get(service, 'Other')
                                 services_data.append([
-                                    Paragraph(service, styles['Normal']),
-                                    Paragraph(category, styles['Normal'])
+                                    Paragraph(service, normal_style),
+                                    Paragraph(category, normal_style)
                                 ])
                             
                             services_table = Table(services_data, colWidths=[3*inch, 2*inch])
                             services_table.setStyle(TableStyle([
                                 ('BACKGROUND', (0, 0), (-1, 0), colors.lightyellow),
                                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.darkorange),
-                                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                ('FONTNAME', (0, 0), (-1, 0), bold_font_name),
                                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
                                 ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
@@ -450,24 +556,22 @@ if st.session_state.active_tab == "Region Analysis":
                             ]))
                             story.append(services_table)
                         else:
-                            story.append(Paragraph("<b>Services:</b> No services specified", styles['Normal']))
+                            story.append(Paragraph("Services: N/A", normal_style))
                         
                         story.append(Spacer(1, 15))
                         
-                        # Enhanced Region Comparison Table
-                        story.append(Paragraph("<font color='purple'>■</font> Region Comparison Table", header_style))
+                        story.append(Paragraph(f"■ {pdf_region_tbl}", header_style))
                         table_data = [[
-                            Paragraph('<b><font color="blue">●</font> Region</b>', styles['Normal']),
-                            Paragraph('<b><font color="red">■</font> Code</b>', styles['Normal']),
-                            Paragraph('<b><font color="orange">▲</font> Carbon Intensity</b>', styles['Normal'])
+                            Paragraph(f'<b>● {pdf_col_region}</b>', normal_style),
+                            Paragraph(f'<b>■ {pdf_col_code}</b>', normal_style),
+                            Paragraph(f'<b>▲ {pdf_col_carbon}</b>', normal_style)
                         ]]
                         
                         for i, region in enumerate(filtered_options):
-                            row_color = colors.lightgreen if i == 0 else colors.white
                             table_data.append([
-                                region['region_name'],
-                                region['region_code'],
-                                f"{round(region['location_based_intensity'], 3)}"
+                                Paragraph(region['region_name'], normal_style),
+                                Paragraph(region['region_code'], normal_style),
+                                Paragraph(f"{round(region['location_based_intensity'], 3)}", normal_style)
                             ])
                         
                         table = Table(table_data, colWidths=[2*inch, 1*inch, 2*inch])
@@ -475,7 +579,7 @@ if st.session_state.active_tab == "Region Analysis":
                             ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
                             ('TEXTCOLOR', (0, 0), (-1, 0), colors.darkblue),
                             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTNAME', (0, 0), (-1, 0), bold_font_name),
                             ('FONTSIZE', (0, 0), (-1, 0), 9),
                             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                             ('BACKGROUND', (0, 1), (-1, 1), colors.lightgreen),  # Highlight best region
@@ -486,22 +590,16 @@ if st.session_state.active_tab == "Region Analysis":
                         story.append(table)
                         story.append(Spacer(1, 25))
                         
-                        # Key Insights with icons
-                        story.append(Paragraph("<font color='red'>◆</font> Key Insights", header_style))
-                        # Calculate emission reduction between highest and lowest location-based scores
-                        highest_location = max(filtered_options, key=lambda x: x['location_based_intensity'])['location_based_intensity']
-                        lowest_location = min(filtered_options, key=lambda x: x['location_based_intensity'])['location_based_intensity']
-                        emission_reduction = round((highest_location - lowest_location) / highest_location * 100, 1)
-                        
+                        story.append(Paragraph(f"◆ {pdf_insights}", header_style))
                         insights_data = [[
-                            Paragraph("<font color='blue'>▼</font> Emission Reduction:", styles['Normal']),
-                            Paragraph(f"{emission_reduction}% between highest and lowest regions", styles['Normal'])
+                            Paragraph(f"<b>▼ {pdf_emission}</b>", normal_style),
+                            Paragraph(pdf_emission_v, normal_style)
                         ], [
-                            Paragraph("<font color='gold'>★</font> Best Region:", styles['Normal']),
-                            Paragraph(f"{best['region_name']}", styles['Normal'])
+                            Paragraph(f"<b>★ {pdf_best}</b>", normal_style),
+                            Paragraph(f"{best['region_name']}", normal_style)
                         ], [
-                            Paragraph("<font color='green'>♦</font> Lowest Carbon Intensity:", styles['Normal']),
-                            Paragraph(f"{round(best['location_based_intensity'], 3)} kg CO2e/kWh", styles['Normal'])
+                            Paragraph(f"<b>♦ {pdf_lowest}</b>", normal_style),
+                            Paragraph(f"{round(best['location_based_intensity'], 3)} kg CO2e/kWh", normal_style)
                         ]]
                         
                         insights_table = Table(insights_data, colWidths=[2.5*inch, 3*inch])
@@ -510,37 +608,34 @@ if st.session_state.active_tab == "Region Analysis":
                             ('GRID', (0, 0), (-1, -1), 1, colors.gold),
                             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                             ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold')
+                            ('FONTNAME', (0, 0), (0, -1), bold_font_name)
                         ]))
                         story.append(insights_table)
                         story.append(Spacer(1, 20))
                         
-                        # Optimization Recommendations with enhanced styling
-                        story.append(Paragraph("<font color='yellow'>◆</font> Optimization Recommendations", header_style))
+                        story.append(Paragraph(f"◆ {pdf_opt}", header_style))
                         
-                        # Create comprehensive recommendations table
                         rec_headers = [
-                            Paragraph('<b><font color="red">◆</font> Recommendation</b>', styles['Normal']),
-                            Paragraph('<b><font color="green">$</font> Potential Savings</b>', styles['Normal']),
-                            Paragraph('<b><font color="orange">⚙</font> Implementation</b>', styles['Normal'])
+                            Paragraph(f"<b>◆ {pdf_rec_col1}</b>", normal_style),
+                            Paragraph(f"<b>$ {pdf_rec_col2}</b>", normal_style),
+                            Paragraph(f"<b>⚙ {pdf_rec_col3}</b>", normal_style)
                         ]
                         
                         rec_table_data = [rec_headers]
                         
                         for insight in (insights if insights else []):
-                            # Extract potential savings from description
-                            savings_text = "<font color='green'>$</font> Cost & Carbon Savings"
-                            if 'cost' in insight['description'].lower():
-                                savings_text = "<font color='green'>$$</font> Significant Cost Reduction"
-                            elif 'carbon' in insight['description'].lower():
-                                savings_text = "<font color='green'>♦</font> Carbon Footprint Reduction"
-                            elif 'performance' in insight['description'].lower():
-                                savings_text = "<font color='blue'>▲</font> Performance Optimization"
+                            savings_text = "$ Cost & Carbon Savings"
+                            if "cost" in insight["description"].lower() or "コスト" in insight["description"]:
+                                savings_text = "$ Significant Cost Reduction"
+                            elif "carbon" in insight["description"].lower() or "カーボン" in insight["description"]:
+                                savings_text = "♦ Carbon Footprint Reduction"
+                            elif "performance" in insight["description"].lower() or "パフォーマンス" in insight["description"]:
+                                savings_text = "▲ Performance Optimization"
                             
                             rec_table_data.append([
-                                Paragraph(f"<b>{insight['title']}</b>", styles['Normal']),
-                                Paragraph(savings_text, styles['Normal']),
-                                Paragraph(insight['description'], styles['Normal'])
+                                Paragraph(f"<b>{_strip_emoji(insight['title'])}</b>", normal_style),
+                                Paragraph(savings_text, normal_style),
+                                Paragraph(_strip_emoji(insight["description"]), normal_style)
                             ])
                         
                         rec_table = Table(rec_table_data, colWidths=[2.2*inch, 1.8*inch, 3*inch])
@@ -548,7 +643,7 @@ if st.session_state.active_tab == "Region Analysis":
                             # Header styling
                             ('BACKGROUND', (0, 0), (-1, 0), colors.lightcoral),
                             ('TEXTCOLOR', (0, 0), (-1, 0), colors.darkred),
-                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTNAME', (0, 0), (-1, 0), bold_font_name),
                             ('FONTSIZE', (0, 0), (-1, 0), 9),
                             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                             
@@ -563,22 +658,19 @@ if st.session_state.active_tab == "Region Analysis":
                             ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
                             
                             # Alternate row colors
-                            ('BACKGROUND', (0, 1), (-1, 1), colors.lightblue),
-                            ('BACKGROUND', (0, 3), (-1, 3), colors.lightblue),
-                            ('BACKGROUND', (0, 5), (-1, 5), colors.lightblue)
+                            *[('BACKGROUND', (0, i), (-1, i), colors.lightblue) for i in range(1, len(rec_table_data), 2)]
                         ]))
                         story.append(rec_table)
                         story.append(Spacer(1, 15))
                         
                         # Add savings summary box
                         savings_data = [[
-                            Paragraph("<font color='green'>$</font> <b>Estimated Annual Savings</b>", metric_style),
-                            Paragraph("<font color='green'>♦</font> <b>Environmental Impact</b>", metric_style)
+                            Paragraph(f"$ <b>{pdf_savings_title1}</b>", metric_style),
+                            Paragraph(f"♦ <b>{pdf_savings_title2}</b>", metric_style)
                         ], [
-                            Paragraph("• Cost optimization: 15-30%\n• Resource efficiency: 20-40%\n• Operational savings: 10-25%", styles['Normal']),
-                            Paragraph("• Carbon reduction: 25-50%\n• Energy efficiency: 30-60%\n• Sustainable operations", styles['Normal'])
+                            Paragraph(pdf_savings_body1, normal_style),
+                            Paragraph(pdf_savings_body2, normal_style)
                         ]]
-                        
                         savings_table = Table(savings_data, colWidths=[3*inch, 3*inch])
                         savings_table.setStyle(TableStyle([
                             ('BACKGROUND', (0, 0), (-1, 0), colors.gold),
@@ -595,9 +687,8 @@ if st.session_state.active_tab == "Region Analysis":
                         
                         # Footer
                         story.append(Spacer(1, 30))
-                        footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=10, textColor=colors.grey, alignment=1)
-                        story.append(Paragraph("Generated by GreenCloud Advisor - AWS Region Sustainability Recommender", footer_style))
-                        
+                        story.append(Paragraph(pdf_footer, footer_style))
+
                         try:
                             doc.build(story)
                             buffer.seek(0)
@@ -613,26 +704,26 @@ if st.session_state.active_tab == "Region Analysis":
                             return buffer.getvalue()
                     
                     st.download_button(
-                        label="📥 Download PDF Report",
+                        label=T["result_download"],
                         data=create_analysis_pdf(),
-                        file_name=f"GreenCloud_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        file_name=f"GreenCloud_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}{'_ja' if st.session_state.lang == 'ja' else ''}.pdf",
                         mime="application/pdf",
                         type="primary"
                     )
             
             else:
-                st.warning("⚠️ No regions support all your required services. Consider modifying your requirements.")
+                st.warning(T["result_no_regions"])
         else:
-            st.info("📊 Click 'Analyze Regions' to see sustainability analysis results here.")
+            st.info(T["info_placeholder"])
 
 elif st.session_state.active_tab == "CCFT Report Analysis":
-    st.header("📊 CCFT Report Analysis & AI Assistant")
+    st.header(T["header_ccft"])
     
     # CCFT Report upload
     uploaded_file = st.file_uploader(
-        "Upload CCFT Report",
+        T["upload_ccft"],
         type=['csv', 'json'],
-        help="Upload your AWS Customer Carbon Footprint Tool report for AI-powered analysis"
+        help=T["upload_ccft_help"]
     )
     
     # Auto-switch to CCFT tab when file is uploaded
@@ -644,15 +735,29 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
-    # Process CCFT data if uploaded
+    # Process carbon emission data if uploaded
     if uploaded_file:
         try:
             if uploaded_file.name.endswith('.csv'):
                 ccft_data = pd.read_csv(uploaded_file)
-                st.success("✅ CCFT CSV report loaded successfully!")
+                # Map new column names to legacy names for backward compatibility
+                column_mapping = {
+                    'total_mbm_emissions': 'total_mbm_emissions_value',
+                    'total_lbm_emissions': 'total_lbm_emissions_value',
+                    'service': 'product_code',
+                    'region': 'location',
+                    'usage_year': 'usage_month',
+                }
+                ccft_data.rename(columns={k: v for k, v in column_mapping.items() if k in ccft_data.columns}, inplace=True)
+                # Add unit columns if missing
+                if 'total_mbm_emissions_unit' not in ccft_data.columns:
+                    ccft_data['total_mbm_emissions_unit'] = 'MTCO2e'
+                if 'total_lbm_emissions_unit' not in ccft_data.columns:
+                    ccft_data['total_lbm_emissions_unit'] = 'MTCO2e'
+                st.success(T["ccft_csv_success"])
             else:
                 ccft_data = json.load(uploaded_file)
-                st.success("✅ CCFT JSON report loaded successfully!")
+                st.success(T["ccft_json_success"])
             
             # Load data into chatbot
             chatbot.load_ccft_data(ccft_data)
@@ -661,24 +766,22 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
             overview_col, chat_col = st.columns([1, 1])
             
             with overview_col:
-                st.subheader("📋 Report Overview")
+                st.subheader(T["subheader_overview"])
                 
                 if isinstance(ccft_data, pd.DataFrame):
                     st.write(f"**Records:** {len(ccft_data)}")
                     st.write(f"**Columns:** {len(ccft_data.columns)}")
                     
-                    # Show key metrics
                     carbon_cols = [col for col in ccft_data.columns if 'carbon' in col.lower() or 'co2' in col.lower() or 'emission' in col.lower()]
                     if carbon_cols:
                         total_emissions = ccft_data[carbon_cols[0]].sum()
-                        st.metric("Total Emissions", f"{total_emissions:.2f} kg CO2e")
+                        st.metric(T["total_emissions"], f"{total_emissions:.2f} kg CO2e")
                     
                     if 'Region' in ccft_data.columns:
                         unique_regions = ccft_data['Region'].nunique()
-                        st.metric("AWS Regions", unique_regions)
+                        st.metric(T["aws_regions"], unique_regions)
                     
-                    # Data preview
-                    with st.expander("📄 Data Preview"):
+                    with st.expander(T["data_preview"]):
                         st.dataframe(ccft_data.head(5), width='stretch')
                 
                 # Initialize session state for insights
@@ -691,24 +794,24 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                 btn_col1, btn_col2 = st.columns([2, 1])
                 with btn_col2:
                     with st.form("ai_insights_form"):
-                        insights_button = st.form_submit_button("🤖 Get AI Insights", type="primary")
+                        insights_button = st.form_submit_button(T["btn_insights"], type="primary")
                         st.markdown('<style>div[data-testid="stForm"] button { width: 150px !important; }</style>', unsafe_allow_html=True)
                 
                 if insights_button:
                     with st.spinner("Analyzing your CCFT data..."):
-                        st.session_state.insights_data = chatbot.get_data_insights()
+                        st.session_state.insights_data = chatbot.get_data_insights(lang=st.session_state.lang)
                         st.session_state.show_insights_modal = True
                 
                 # Show modal if flag is set
                 if st.session_state.show_insights_modal and st.session_state.insights_data:
-                    @st.dialog("🤖 AI Insights - Carbon Footprint Analysis", width="large")
+                    @st.dialog(T["insights_modal_title"], width="large")
                     def show_insights():
                         insights_data = st.session_state.insights_data
                         if isinstance(insights_data, dict):
                             # Display charts if available
                             charts = insights_data.get("charts", [])
                             if charts:
-                                st.write("**📊 Generated Visualizations:**")
+                                st.write(T["insights_visualizations"])
                                 
                                 # Display charts in 2x2 grid
                                 for i in range(0, len(charts), 2):
@@ -737,7 +840,7 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                             # Display text insights if available
                             text_insights = insights_data.get("text", "")
                             if text_insights:
-                                st.write("**🤖 AI Analysis:**")
+                                st.write(T["insights_ai_analysis"])
                                 formatted_text = text_insights.replace('\n\n', '\n').strip()
                                 st.markdown(formatted_text)
                             
@@ -748,7 +851,7 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                                 # Create AI insights PDF
                                 from reportlab.lib.pagesizes import A4
                                 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-                                from reportlab.lib.styles import getSampleStyleSheet
+                                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
                                 from reportlab.lib.units import inch
                                 import io
                                 import base64
@@ -758,34 +861,62 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                                     doc = SimpleDocTemplate(buffer, pagesize=A4)
                                     styles = getSampleStyleSheet()
                                     story = []
+
+                                    # Japanese font setup
+                                    from reportlab.pdfbase import pdfmetrics
+                                    from reportlab.pdfbase.ttfonts import TTFont
+                                    import os as _os
+                                    font_name = 'Helvetica'
+                                    if st.session_state.lang == "ja":
+                                        _jp_candidates = [
+                                            ('/Library/Fonts/Arial Unicode.ttf', None),
+                                            ('/System/Library/Fonts/Arial Unicode.ttf', None),
+                                            ('/usr/share/fonts/truetype/notosansjp/NotoSansJP-Regular.ttf', None),
+                                            ('/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', 0),
+                                            ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 0),
+                                        ]
+                                        for fp, subfont_idx in _jp_candidates:
+                                            if _os.path.exists(fp):
+                                                try:
+                                                    if subfont_idx is not None:
+                                                        pdfmetrics.registerFont(TTFont('JpFont', fp, subfontIndex=subfont_idx))
+                                                    else:
+                                                        pdfmetrics.registerFont(TTFont('JpFont', fp))
+                                                    font_name = 'JpFont'
+                                                except Exception:
+                                                    continue
+                                                break
+
+                                    title_style = ParagraphStyle('InsTitle', parent=styles['Title'], fontName=font_name)
+                                    h1_style = ParagraphStyle('InsH1', parent=styles['Heading1'], fontName=font_name)
+                                    h2_style = ParagraphStyle('InsH2', parent=styles['Heading2'], fontName=font_name)
+                                    normal_style = ParagraphStyle('InsNormal', parent=styles['Normal'], fontName=font_name)
                                     
                                     # Title
-                                    story.append(Paragraph("<font color='blue'>◆</font> AI Carbon Footprint Insights Report", styles['Title']))
-                                    story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+                                    story.append(Paragraph(f"◆ {T['insights_pdf_title']}", title_style))
+                                    story.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y')}", normal_style))
                                     story.append(Spacer(1, 20))
                                     
                                     # Add charts
                                     if charts:
-                                        story.append(Paragraph("Generated Visualizations", styles['Heading1']))
+                                        story.append(Paragraph(T['insights_pdf_visualizations'], h1_style))
                                         for chart in charts:
-                                            story.append(Paragraph(chart['title'], styles['Heading2']))
+                                            story.append(Paragraph(chart['title'], h2_style))
                                             img_buffer = io.BytesIO(base64.b64decode(chart['image']))
                                             img = Image(img_buffer, width=6*inch, height=3.6*inch)
                                             story.append(img)
                                             if 'description' in chart:
-                                                story.append(Paragraph(chart['description'], styles['Normal']))
+                                                story.append(Paragraph(chart['description'], normal_style))
                                             story.append(Spacer(1, 15))
                                     
                                     # Add AI analysis
                                     if text_insights:
-                                        story.append(Paragraph("AI Analysis", styles['Heading1']))
-                                        # Split text into paragraphs and format properly
+                                        story.append(Paragraph(T['insights_pdf_analysis'], h1_style))
                                         paragraphs = text_insights.split('\n\n')
                                         for para in paragraphs:
                                             if para.strip():
-                                                # Handle bullet points and formatting
                                                 formatted_para = para.strip().replace('\n', '<br/>')
-                                                story.append(Paragraph(formatted_para, styles['Normal']))
+                                                story.append(Paragraph(formatted_para, normal_style))
                                                 story.append(Spacer(1, 10))
                                     
                                     doc.build(story)
@@ -793,7 +924,7 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                                     return buffer.getvalue()
                                 
                                 st.download_button(
-                                    label="📥 Download report",
+                                    label=T["insights_download_btn"],
                                     data=create_insights_pdf(),
                                     file_name=f"AI_Insights_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                                     mime="application/pdf",
@@ -807,7 +938,7 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                     st.session_state.show_insights_modal = False
             
             with chat_col:
-                st.subheader("💬 Ask me about your carbon footprint")
+                st.subheader(T["subheader_chat"])
                 
                 # Chat interface
                 chat_container = st.container()
@@ -828,21 +959,19 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                 # Chat input with form for Enter key support
                 with st.form("chat_form"):
                     user_question = st.text_input(
-                        "Ask about your CCFT data:",
-                        placeholder="e.g., Which region has the highest emissions?",
+                        T["chat_input_label"],
+                        placeholder=T["chat_placeholder"],
                         key="ccft_chat_input",
                         value="" if st.session_state.clear_ccft_input else st.session_state.get("ccft_chat_input", "")
                     )
-                    
-                    send_button = st.form_submit_button("Send", type="primary")
+                    send_button = st.form_submit_button(T["btn_send"], type="primary")
                 
-                # Clear button outside form
-                if st.button("Clear Chat"):
+                if st.button(T["btn_clear"]):
                     st.session_state.chat_history = []
                     st.session_state.clear_ccft_input = True
                 
                 if send_button and user_question:
-                        with st.spinner("🤖 GreenCloudAdvisor is analyzing your CCFT data..."):
+                        with st.spinner("🤖 GreenCloudAdvisor is analyzing your report..."):
                             response = chatbot.chat(user_question)
                             st.session_state.chat_history.append(("user", user_question))
                             st.session_state.chat_history.append(("assistant", response))
@@ -853,35 +982,27 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
                 if st.session_state.clear_ccft_input:
                     st.session_state.clear_ccft_input = False
                 
-                # Suggested questions
-                st.write("**💡 Suggested Questions:**")
-                suggestions = [
-                    "Which AWS region has the lowest carbon footprint?",
-                    "What are my top 3 carbon emission sources?",
-                    "How can I reduce my AWS carbon footprint?",
-                    "Compare location-based vs market-based emissions",
-                    "Which services should I optimize first?"
-                ]
+                st.write(T["suggested_questions"])
+                suggestions = T["suggestions"]
                 
                 for suggestion in suggestions:
                     if st.button(suggestion, key=f"suggest_{suggestion[:20]}"):
-                        with st.spinner("🤖 GreenCloudAdvisor is analyzing your CCFT data..."):
+                        with st.spinner("🤖 GreenCloudAdvisor is analyzing your report..."):
                             response = chatbot.chat(suggestion)
                             st.session_state.chat_history.append(("user", suggestion))
                             st.session_state.chat_history.append(("assistant", response))
                         st.rerun()
         
         except Exception as e:
-            st.error(f"❌ Error loading CCFT report: {e}")
+            st.error(f"❌ Error loading report: {e}")
     
     else:
-        st.info("📤 Please upload your CCFT report (CSV or JSON format) to begin AI-powered analysis")
+        st.info(T["ce_upload_info"])
         
-        # Show example and setup instructions
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("📋 Expected File Format")
+            st.subheader(T["expected_format"])
             example_data = pd.DataFrame({
                 'Region': ['us-east-1', 'eu-west-1', 'ap-southeast-1'],
                 'Service': ['EC2', 'S3', 'RDS'],
@@ -891,8 +1012,8 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
             st.dataframe(example_data, width='stretch')
         
         with col2:
-            st.subheader("💬 Generic Sustainability Assistant")
-            st.write("**Don't have CCFT report? No problem! Ask general sustainability questions:**")
+            st.subheader(T["generic_assistant"])
+            st.write(T["generic_assistant_desc"])
             
             # Initialize session state for generic chat history
             if "generic_chat_history" not in st.session_state:
@@ -917,16 +1038,14 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
             # Generic chat input with form for Enter key support
             with st.form("generic_chat_form"):
                 generic_question = st.text_input(
-                    "Ask about AWS sustainability:",
-                    placeholder="e.g., What are AWS sustainability best practices?",
+                    T["generic_input_label"],
+                    placeholder=T["generic_placeholder"],
                     key="generic_chat_input",
                     value="" if st.session_state.clear_generic_input else st.session_state.get("generic_chat_input", "")
                 )
-                
-                generic_send_button = st.form_submit_button("Send", type="primary")
+                generic_send_button = st.form_submit_button(T["btn_send"], type="primary")
             
-            # Clear button outside form
-            if st.button("Clear Chat", key="generic_clear"):
+            if st.button(T["btn_clear"], key="generic_clear"):
                 st.session_state.generic_chat_history = []
                 st.session_state.clear_generic_input = True
             
@@ -941,15 +1060,8 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
             if st.session_state.clear_generic_input:
                 st.session_state.clear_generic_input = False
             
-            # Generic suggested questions
-            st.write("**💡 Suggested Questions:**")
-            generic_suggestions = [
-                "What are AWS sustainability best practices?",
-                "How can I reduce my cloud carbon footprint?",
-                "Which AWS regions are most sustainable?",
-                "What is the AWS Well-Architected Sustainability Pillar?",
-                "How does renewable energy affect cloud emissions?"
-            ]
+            st.write(T["suggested_questions"])
+            generic_suggestions = T["generic_suggestions"]
             
             for suggestion in generic_suggestions:
                 if st.button(suggestion, key=f"generic_{suggestion[:20]}"):
@@ -960,4 +1072,4 @@ elif st.session_state.active_tab == "CCFT Report Analysis":
 
 # Footer
 st.markdown("---")
-st.markdown("*GreenCloud Advisor helps you balance proximity and sustainability in AWS region selection*")
+st.markdown(T["footer"])
