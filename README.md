@@ -93,6 +93,27 @@ To Deploy:
 1. Get Insights from your emission report (Download available)
 1. Chat with your emission report using Amazon Nova pro
 
+### Adding a New Language
+This application supports multilingual UI through JSON locale files in the `locales/` directory.
+To add a new language (e.g., Korean `ko`):
+Copy `locales/en.json` to `locales/ko.json`
+Translate all values in `ko.json` (keys must remain the same)
+In `streamlit_app.py`, update `_load_locales()` to include the new language code:
+```python
+   for lang_code in ['en', 'ja', 'ko']:
+   ```
+Update the language switcher button logic to cycle through the new language
+In `src/sustainability_insights.py`, add the new language code to `_load_insights_texts()`
+
+Locale file structure:
+```
+locales/
+  en.json   # English (default)
+  ja.json   # Japanese
+  ko.json   # Korean (example)
+```
+**Important**: All UI text, PDF labels, chart labels, and AI prompt instructions are defined in these files. No source code changes are needed for translation — only the JSON values.
+
 ## Important Notes
 - The connection between CloudFront and the ALB is in HTTP, not SSL encrypted. This means traffic between CloudFront and the ALB is unencrypted. It is **strongly recommended** to configure HTTPS by bringing your own domain name and SSL/TLS certificate to the ALB.
 - Users should provide their electricitymaps.com API key in the config file to enable rapid deployment. Once deployed to production, **migrate the API key to AWS Secrets Manager** and update your application to retrieve credentials from it, ensuring compliance with security best practices and preventing credential exposure.
