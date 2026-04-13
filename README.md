@@ -9,6 +9,7 @@ It has two modes:
 - **Analyse the actual carbon foorprint for the existing workloads, get insights and chat with the report**: Upload your [Carbon Emission Report](https://docs.aws.amazon.com/sustainability/latest/userguide/csv-reports.html) report from the [sustainability console](https://docs.aws.amazon.com/sustainability/latest/userguide/getting-started.html)
    You can click on ```Get Insights``` button to get the insights like ```what are the top services that are contributing most on the carbon usage```, ```which regions have the most score``` and so on.
    You can also chat with the report by chatbot on the right. Some of the sample questions you can ask are mentioned in the same tab.
+- **Multilingual support** : The application UI supports multiple languages, support for Japanese and English is already added(english being the default). You can also include any other language with JSON locale files (details given below).
 
 You can test this running the streamlit app locally. If you like it, you can deploy this to your AWS account.
 
