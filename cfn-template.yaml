@@ -26,14 +26,14 @@ Parameters:
     Type: String
     Default: 000000000.dkr.ecr.us-east-1.amazonaws.com/greencloud:latest
   
-  pCloudFrontPrefixListId:
-    Type: String
-    Default: pl-3b927c52
-    Description: AWS managed prefix list ID for CloudFront (varies by region, e.g. pl-3b927c52 for us-east-1)
-
   pContainerPort:
     Type: Number
     Default: 8501
+
+  pCustomHeaderName:
+    Type: String
+    Default: X-CloudFront-Secret
+    Description: Custom header name CloudFront sends to the ALB to prove origin identity
 
 Resources:
   # VPC and Networking
@@ -192,6 +192,17 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PrivateSubnet2
 
+  # Secret used to validate that requests originate from this CloudFront distribution.
+  # GenerateSecretString creates a unique random value per deployment - never stored in this template.
+  CloudFrontOriginSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}-cloudfront-origin-secret'
+      Description: Random secret header value shared between CloudFront and ALB
+      GenerateSecretString:
+        PasswordLength: 40
+        ExcludePunctuation: true
+
   # Security Groups
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -202,11 +213,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourcePrefixListId: !Ref pCloudFrontPrefixListId
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourcePrefixListId: !Ref pCloudFrontPrefixListId
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -272,6 +279,25 @@ Resources:
       Port: 80
       Protocol: HTTP
       DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: '403'
+            ContentType: text/plain
+            MessageBody: 'Access Denied - Direct access not allowed'
+
+  # Forward to the app only when the request carries the secret custom header from CloudFront
+  ALBListenerRuleCustomHeader:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: !Ref pCustomHeaderName
+            Values:
+              - !Sub '{{resolve:secretsmanager:${CloudFrontOriginSecret}:SecretString}}'
+      Actions:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
 
@@ -439,6 +465,9 @@ Resources:
             CustomOriginConfig:
               HTTPPort: 80
               OriginProtocolPolicy: http-only
+            OriginCustomHeaders:
+              - HeaderName: !Ref pCustomHeaderName
+                HeaderValue: !Sub '{{resolve:secretsmanager:${CloudFrontOriginSecret}:SecretString}}'
         PriceClass: PriceClass_100
       Tags:
         - Key: Name
@@ -460,3 +489,7 @@ Outputs:
   CloudWatchLogGroup:
     Description: CloudWatch Log Group for ECS task
     Value: !Sub ${LogGroup}
+
+  OriginSecretArn:
+    Description: ARN of the Secrets Manager secret holding the CloudFront origin custom header value
+    Value: !Ref CloudFrontOriginSecret
